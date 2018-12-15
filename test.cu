@@ -89,7 +89,7 @@ void wrapper(Test test) {
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
     gpuErrchk( memcpyDeviceToHost(&test.v, &cudaTest.v) );
-    cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost);
+    gpuErrchk( cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost) );
     cout << time << endl;
     cout << test.v << endl;
     
