@@ -6,12 +6,6 @@
 using namespace std;
 using namespace Eigen;
 
-#define CUDA_CALL(x) do { if((x)!=cudaSuccess) { \
-    printf("Error at %s:%d\n",__FILE__,__LINE__);\
-    cout << x << endl; \
-    exit(-1); \
-    }} while(0)
-
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {
@@ -36,29 +30,23 @@ struct CudaTest {
     CudaVectorXf v;
 };
 
+__device__ float* getRowPtr(CudaMatrixXf,int);
+
 __global__ void test_kernel(CudaTest test, unsigned long long* time) {
     unsigned long long startTime = clock();
     float v = test.v.data[threadIdx.x];
-    printf("dogs2:%f\n",v);
     test.v.data[threadIdx.x] = v+1;
+    for (int row = 0; row < 5; row++) {
+        float* rowPtr = getRowPtr(test.m, row);
+        float i = rowPtr[threadIdx.x];
+//        printf("%d:%f:%d\n",row, i, threadIdx.x);
+        rowPtr[threadIdx.x] = i+1;
+    }
     unsigned long long endTime = clock();
     *time = (endTime - startTime);
 }
-
-__global__ void test_kernel2(unsigned long long* time) {
-    unsigned long long startTime = clock();
-    printf("dogs2\n");
-    unsigned long long endTime = clock();
-    *time = (endTime - startTime);
-}
-/*
-__global__ void test_kernel2(flotest) {
-    float v = test.v.data[0];
-    printf("dogs2\n%d",v);
-    }*/
 
 cudaError_t cudaMalloc(VectorXf* v, CudaVectorXf* cv) {
-    cout << v->size() << endl;
     return cudaMalloc((void**)&cv->data, v->size() * sizeof(float));
 }
 
@@ -70,30 +58,41 @@ cudaError_t memcpyDeviceToHost(VectorXf* v, CudaVectorXf* cv) {
     return cudaMemcpy((void**)v->data(), cv->data, v->size() * sizeof(float), cudaMemcpyDeviceToHost);
 }
 
-void cudaMalloc(MatrixXf m, CudaMatrixXf cm) {
-    cudaMallocPitch((void**)&cm.data, &cm.pitch, m.cols() * sizeof(float), m.rows());
+cudaError_t cudaMalloc(MatrixXf* m, CudaMatrixXf* cm) {
+   return cudaMallocPitch((void**)&cm->data, &cm->pitch, m->cols() * sizeof(float), m->rows());
+}
+
+cudaError_t memcpyHostToDevice(MatrixXf* m, CudaMatrixXf* cm) {
+    return cudaMemcpy2D(cm->data, cm->pitch, m->data(), m->cols() * sizeof(float), m->cols() * sizeof(float), m->rows(), cudaMemcpyHostToDevice);
+}
+
+cudaError_t memcpyDeviceToHost(MatrixXf* m, CudaMatrixXf* cm) {
+    return cudaMemcpy2D(m->data(), m->cols() * sizeof(float), cm->data, cm->pitch, m->cols() * sizeof(float), m->rows(), cudaMemcpyDeviceToHost);
+}
+
+float* getRowPtr(CudaMatrixXf cm, int row) {
+    return (float*)((char*)cm.data + row*cm.pitch);
 }
 
 void wrapper(Test test) {
-    cout << "cats" << endl;
-    //cout << test.v << endl;
     unsigned long long time;
     unsigned long long* d_time;
     gpuErrchk( cudaMalloc(&d_time, sizeof(unsigned long long)) );
     CudaTest cudaTest;
-    CudaVectorXf cv;
     gpuErrchk( cudaMalloc(&test.v, &cudaTest.v) );
     gpuErrchk( memcpyHostToDevice(&test.v, &cudaTest.v) );
-    //gpuErrchk( cudaMalloc((void**)&cv.data, 5 * sizeof(float)) );
-    test_kernel<<<1,5>>>(cudaTest, d_time);
-    gpuErrchk( cudaPeekAtLastError() );
-    gpuErrchk( cudaDeviceSynchronize() );
-    gpuErrchk( memcpyDeviceToHost(&test.v, &cudaTest.v) );
-    gpuErrchk( cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost) );
-    cout << time << endl;
-    cout << test.v << endl;
-    
-//    float* data = (float*)malloc(5*sizeof(float));
-//    cudaMemcpy(data, cudaTest.v.data, 5 * sizeof(float), cudaMemcpyDeviceToHost);
-//    cout << data[0] << endl;
+    gpuErrchk( cudaMalloc(&test.m, &cudaTest.m) );
+    gpuErrchk( memcpyHostToDevice(&test.m, &cudaTest.m) );
+    for (int i = 0; i < 1; i++) {
+        test_kernel<<<1,5>>>(cudaTest, d_time);
+        gpuErrchk( cudaPeekAtLastError() );
+        gpuErrchk( cudaDeviceSynchronize() );
+
+        gpuErrchk( memcpyDeviceToHost(&test.v, &cudaTest.v) );
+        gpuErrchk( memcpyDeviceToHost(&test.m, &cudaTest.m) );
+        gpuErrchk( cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost) );
+        cout << time << endl;
+        cout << test.v << endl;
+        cout << test.m << endl;
+    }
 }
