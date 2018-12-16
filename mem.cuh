@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include "type.cuh"
 #include "test.h"
+#include "err.cuh"
 
 using namespace Eigen;
 
@@ -31,32 +32,24 @@ cudaError_t memcpyDeviceToHost(MatrixXf* m, CudaMatrixXf* cm) {
 }
 
 cudaError_t cudaMalloc(Test* t, CudaTest* ct) {
-    cudaError_t err;
-    err = cudaMalloc(&t->m,&ct->m);
-    if (err != cudaSuccess) return err;
-    err = cudaMalloc(&t->v,&ct->v);
-    if (err != cudaSuccess) return err;
-    return err;
+    errRet( cudaMalloc(&t->m,&ct->m) );
+    errRet( cudaMalloc(&t->v,&ct->v) );
+    return cudaSuccess;
 }
 
 cudaError_t memcpyHostToDevice(Test* t, CudaTest* ct) {
-    cudaError_t err;
-    err = memcpyHostToDevice(&t->m,&ct->m);
-    if (err != cudaSuccess) return err;
-    err = memcpyHostToDevice(&t->v,&ct->v);
-    if (err != cudaSuccess) return err;
-    return err;
+    errRet( memcpyHostToDevice(&t->m,&ct->m) );
+    errRet( memcpyHostToDevice(&t->v,&ct->v) );
+    return cudaSuccess;
 }
 
 cudaError_t memcpyDeviceToHost(Test* t, CudaTest* ct) {
-    cudaError_t err;
-    err = memcpyDeviceToHost(&t->m,&ct->m);
-    if (err != cudaSuccess) return err;
-    err = memcpyDeviceToHost(&t->v,&ct->v);
-    if (err != cudaSuccess) return err;
-    return err;
+    errRet( memcpyDeviceToHost(&t->m,&ct->m) );
+    errRet( memcpyDeviceToHost(&t->v,&ct->v) );
+    return cudaSuccess;
 }
 
 __device__ float* getRowPtr(CudaMatrixXf cm, int row) {
     return (float*)((char*)cm.data + row*cm.pitch);
 }
+

@@ -9,3 +9,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
       if (abort) exit(code);
    }
 }
+
+#define errRet(ans) do { if((ans)!=cudaSuccess) { \
+    return ans; \
+        }} while(0)
