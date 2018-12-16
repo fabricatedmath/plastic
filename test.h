@@ -8,4 +8,8 @@ struct Test {
     VectorXf v;
 };
 
+struct StaticState {
+    MatrixXf images;
+};
+
 void wrapper(Test test);

@@ -49,6 +49,21 @@ cudaError_t memcpyDeviceToHost(Test* t, CudaTest* ct) {
     return cudaSuccess;
 }
 
+cudaError_t cudaMalloc(StaticState* s, CudaStaticState* cs) {
+    errRet( cudaMalloc(&s->images,&cs->images) );
+    return cudaSuccess;
+}
+
+cudaError_t memcpyHostToDevice(StaticState* s, CudaStaticState* cs) {
+    errRet( memcpyHostToDevice(&s->images,&cs->images) );     
+    return cudaSuccess;
+}
+
+cudaError_t memcpyDeviceToHost(StaticState* s, CudaStaticState* cs) {
+    errRet( memcpyDeviceToHost(&s->images,&cs->images) );
+    return cudaSuccess;
+}
+
 __device__ float* getRowPtr(CudaMatrixXf cm, int row) {
     return (float*)((char*)cm.data + row*cm.pitch);
 }

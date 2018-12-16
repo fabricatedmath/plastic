@@ -13,3 +13,7 @@ struct CudaTest {
     CudaMatrixXf m;
     CudaVectorXf v;
 };
+
+struct CudaStaticState {
+    CudaMatrixXf images;
+};
