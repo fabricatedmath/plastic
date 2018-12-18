@@ -31,6 +31,7 @@ cudaError_t memcpyDeviceToHost(MatrixXf* m, CudaMatrixXf* cm) {
     return cudaMemcpy2D(m->data(), m->cols() * sizeof(float), cm->data, cm->pitch, m->cols() * sizeof(float), m->rows(), cudaMemcpyDeviceToHost);
 }
 
+/* CUDA Test */
 cudaError_t cudaMalloc(Test* t, CudaTest* ct) {
     errRet( cudaMalloc(&t->m,&ct->m) );
     errRet( cudaMalloc(&t->v,&ct->v) );
@@ -49,18 +50,35 @@ cudaError_t memcpyDeviceToHost(Test* t, CudaTest* ct) {
     return cudaSuccess;
 }
 
+/* CUDA State */
 cudaError_t cudaMalloc(StaticState* s, CudaStaticState* cs) {
     errRet( cudaMalloc(&s->images,&cs->images) );
     return cudaSuccess;
 }
 
 cudaError_t memcpyHostToDevice(StaticState* s, CudaStaticState* cs) {
-    errRet( memcpyHostToDevice(&s->images,&cs->images) );     
+    errRet( memcpyHostToDevice(&s->images,&cs->images) );
     return cudaSuccess;
 }
 
 cudaError_t memcpyDeviceToHost(StaticState* s, CudaStaticState* cs) {
     errRet( memcpyDeviceToHost(&s->images,&cs->images) );
+    return cudaSuccess;
+}
+
+/* CUDA Buffers */
+cudaError_t cudaMalloc(Buffers* b, CudaBuffers* cb) {
+    errRet( cudaMalloc(&b->buf,&cb->buf) );
+    return cudaSuccess;
+}
+
+cudaError_t memcpyHostToDevice(Buffers* b, CudaBuffers* cb) {
+    errRet( memcpyHostToDevice(&b->buf,&cb->buf) );     
+    return cudaSuccess;
+}
+
+cudaError_t memcpyDeviceToHost(Buffers* b, CudaBuffers* cb) {
+    errRet( memcpyDeviceToHost(&b->buf,&cb->buf) );
     return cudaSuccess;
 }
 

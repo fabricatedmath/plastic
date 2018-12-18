@@ -17,3 +17,7 @@ struct CudaTest {
 struct CudaStaticState {
     CudaMatrixXf images;
 };
+
+struct CudaBuffers {
+    CudaMatrixXf buf;
+};

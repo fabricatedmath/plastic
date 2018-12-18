@@ -12,4 +12,8 @@ struct StaticState {
     MatrixXf images;
 };
 
+struct Buffers {
+    MatrixXf buf;
+};
+
 void wrapper(Test test);
