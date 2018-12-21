@@ -5,20 +5,26 @@ CC := gcc
 LINK := g++ -fPIC
 NVCC := nvcc
 
-INCLUDES = -I eigen-git-mirror/ -I include/
+INCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
-NVCCFLAGS = -I eigen-git-mirror/ -I include/
+NVCCFLAGS = -Ieigen-git-mirror/ -Iinclude/
 
 CXXFLAGS += $(INCLUDES)
-
 LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
 OBJS = main.cpp.o test.cu.o
 TARGET = main
 LINKLINE := $(LINK) -o $(TARGET) $(OBJS) $(LIB_CUDA)
 
+
 all: build
 
 build: $(TARGET)
+
+main.cpp.o: main.cpp test.h
+	$(CXX) $(CXXFLAGS) -c main.cpp -o main.cpp.o
+
+test.cu.o: test.cu err.cuh mem.cuh type.cuh test.h
+	$(NVCC) $(NVCCFLAGS) -c test.cu -o test.cu.o
 
 .SUFFIXES: .c .cpp .cu .o
 %.cu.o: %.cu
@@ -31,7 +37,7 @@ $(TARGET): $(OBJS) Makefile
 	$(LINKLINE)
 
 clean:
-	rm -f *.o $(TARGET)
+	rm -f *.o *.d $(TARGET)
 
 run: $(TARGET)
 	./$(TARGET)

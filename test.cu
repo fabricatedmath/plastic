@@ -12,7 +12,7 @@ __global__ void test_kernel(CudaTest test, unsigned long long* time) {
     unsigned long long startTime = clock();
     float v = test.v.data[threadIdx.x];
     test.v.data[threadIdx.x] = v+1;
-    for (int row = 0; row < 5; row++) {
+    for (int row = 0; row < rows; row++) {
         float* rowPtr = getRowPtr(test.m, row);
         float i = rowPtr[threadIdx.x];
         rowPtr[threadIdx.x] = i+1;
@@ -37,7 +37,5 @@ void wrapper(Test test) {
         gpuErrchk( memcpyDeviceToHost(&test, &cudaTest) );
         gpuErrchk( cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost) );
         cout << time << endl;
-        cout << test.v << endl;
-        cout << test.m << endl;
     }
 }

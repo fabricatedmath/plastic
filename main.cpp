@@ -8,7 +8,7 @@ using namespace Eigen;
 
 int main(int argc, char* argv[]) {
     cout << "dogs" << endl;
-    MatrixXf m = MatrixXf::Random(5,5);
+    MatrixXf m = MatrixXf::Random(50,50);
     VectorXf v = VectorXf::Ones(5);
     Test test;
     test.m = m;

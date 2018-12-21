@@ -1,5 +1,7 @@
 #pragma once
 
+const int rows = 50;
+
 struct CudaMatrixXf {
     float* data;
     size_t pitch;
