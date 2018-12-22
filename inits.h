@@ -1,15 +1,20 @@
 #pragma once
 #include <fstream>
 #include <Eigen/Dense>
+#include "eigen_boost_serialization.hpp"
+
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 #include "type.h"
-#include "constants.cuh"
+#include "constants.h"
 
 using namespace std;
 
-MatrixXd initW() {
-    MatrixXd w =  MatrixXd::Zero(NBNEUR, NBNEUR); //MatrixXd::Random(NBNEUR, NBNEUR).cwiseAbs();
-    //w.fill(1.0);
+typedef Matrix<double,NBNEUR,NBNEUR,RowMajor> MatrixW;
+
+MatrixW initW() {
+    MatrixW w =  MatrixXd::Zero(NBNEUR, NBNEUR);
     w.bottomRows(NBI).leftCols(NBE).setRandom(); // Inhbitory neurons receive excitatory inputs from excitatory neurons
     w.rightCols(NBI).setRandom(); // Everybody receives inhibition (including inhibitory neurons)
     w.bottomRows(NBI).rightCols(NBI) =  -w.bottomRows(NBI).rightCols(NBI).cwiseAbs() * WII_MAX;
@@ -19,14 +24,18 @@ MatrixXd initW() {
     return w;
 }
 
-MatrixXd initWff() {
-    MatrixXd wff = MatrixXd::Zero(NBNEUR, FFRFSIZE);
+typedef Matrix<double,NBNEUR,FFRFSIZE,RowMajor> MatrixWff;
+
+MatrixWff initWff() {
+    MatrixWff wff = MatrixXd::Zero(NBNEUR, FFRFSIZE);
     wff =  (WFFINITMIN + (WFFINITMAX-WFFINITMIN) * MatrixXd::Random(NBNEUR, FFRFSIZE).cwiseAbs().array()).cwiseMin(MAXW);
     wff.bottomRows(NBI).setZero();
     return wff;
 }
 
-MatrixRXu loadDataset() {
+typedef Matrix<int8_t, Dynamic, FFRFSIZE, RowMajor> MatrixDataset;
+
+MatrixDataset loadDataset() {
     int ffrfSize = FFRFSIZE;
 
     ifstream DataFile ("./patchesCenteredScaledBySumTo126ImageNetONOFFRotatedNewInt8.bin.dat", ios::in | ios::binary | ios::ate);
@@ -48,15 +57,16 @@ MatrixRXu loadDataset() {
     cout << "Data read!" << " total read: " << totaldatasize << endl;
     Map<VectorXu> mf (imagedata,totaldatasize);
     VectorXu v(mf);
-    Map<MatrixRXu> mout(v.data(),numRows,numCols);
-    return MatrixRXu(mout);
+    Map<MatrixDataset> mout(v.data(),numRows,numCols);
+    return MatrixDataset(mout);
 }
 
-MatrixRXd loadTransformedDataset() {
-    MatrixRXu d = loadDataset();
-    MatrixRXd dd = d.cast<double>();
+typedef Matrix<double,Dynamic,2*FFRFSIZE,RowMajor> MatrixTransformedDataset;
 
-    MatrixRXd out(dd.rows(), 2*dd.cols());
+MatrixTransformedDataset transformDataset(MatrixDataset d) {
+    Matrix<double,Dynamic,FFRFSIZE,RowMajor> dd = d.cast<double>();
+
+    MatrixTransformedDataset out(dd.rows(), 2*dd.cols());
     out << dd, dd;
 
     out.leftCols(dd.cols()) = out.leftCols(dd.cols()).cwiseMax(0);
@@ -71,4 +81,38 @@ MatrixRXd loadTransformedDataset() {
     out = (INPUTMULT * out.array());
 
     return out;
+}
+
+void storeTransformedDataset(MatrixTransformedDataset transformedDataset) {
+    std::ofstream ofs("transformedDataset");
+    boost::archive::binary_oarchive oa(ofs);
+    oa << transformedDataset;
+}
+
+bool checkForCachedTransformedDataset() {
+    ifstream DataFile ("transformedDataset", ios::in | ios::binary | ios::ate);
+    return DataFile.is_open();
+}
+
+MatrixTransformedDataset loadTransformedDataset() {
+    MatrixTransformedDataset transformedDataset;
+    std::ifstream ifs("transformedDataset");
+    boost::archive::binary_iarchive ia(ifs);
+    ia & transformedDataset;
+    return transformedDataset;
+}
+
+MatrixTransformedDataset retrieveTransformedDataset() {
+    MatrixTransformedDataset transformedDataset;
+    if (checkForCachedTransformedDataset()) {
+        cout << "Transformed Dataset found in cache, retrieving" << endl;
+        transformedDataset = loadTransformedDataset();
+    } else {
+        cout << "Transformed Dataset not found in cache, building.." << endl;
+        MatrixDataset d = loadDataset();
+        transformedDataset = transformDataset(d);
+        cout << "Caching Transformed Dataset" << endl;
+        storeTransformedDataset(transformedDataset);
+    }
+    return transformedDataset;
 }

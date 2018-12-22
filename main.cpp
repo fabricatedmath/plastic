@@ -20,9 +20,9 @@ int main(int argc, char* argv[]) {
     cout << initW() << endl;
     cout << endl << endl;
     cout << initWff() << endl;
-    /*
-    MatrixRXd d = loadTransformedDataset();
-    cout << d.row(0).head(10) << endl;
-    */
+
+    MatrixTransformedDataset transformedDataset = retrieveTransformedDataset();
+    cout << transformedDataset.row(0).head(10) << endl;
+
 
 }
