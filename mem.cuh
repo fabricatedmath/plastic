@@ -1,7 +1,7 @@
 #pragma once
 #include <cuda.h>
 #include <Eigen/Dense>
-#include "type.cuh"
+#include "type.h"
 #include "test.h"
 #include "err.cuh"
 
@@ -82,7 +82,4 @@ cudaError_t memcpyDeviceToHost(Buffers* b, CudaBuffers* cb) {
     return cudaSuccess;
 }
 
-__device__ float* getRowPtr(CudaMatrixXf cm, int row) {
-    return (float*)((char*)cm.data + row*cm.pitch);
-}
 

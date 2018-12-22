@@ -4,9 +4,13 @@
 #include "test.h"
 #include "err.cuh"
 #include "mem.cuh"
+#include "randGen.cuh"
+#include "utility.cuh"
 
 using namespace std;
 using namespace Eigen;
+
+const int rows = 50;
 
 __global__ void test_kernel(CudaTest test, unsigned long long* time) {
     unsigned long long startTime = clock();
