@@ -25,6 +25,12 @@ __global__ void test_kernel(CudaTest test, unsigned long long* time) {
     *time = (endTime - startTime);
 }
 
+void wrapper2() {
+    typedef RandomGen<curandState,1,2> Rgen;
+    Rgen d_rgen(1.1,1.8);
+    //Rgen* d_rgen = new Rgen(1.8,1.1);
+}
+
 void wrapper(Test test) {
     unsigned long long time;
     unsigned long long* d_time;

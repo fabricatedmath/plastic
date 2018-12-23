@@ -24,4 +24,5 @@ int main(int argc, char* argv[]) {
     cout << transformedDataset.row(0).head(10) << endl;
 
 
+    wrapper2();
 }

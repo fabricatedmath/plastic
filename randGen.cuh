@@ -33,7 +33,7 @@ struct RandomGen {
 
     RandomGen(const double posLambda, const double negLambda) {
         gpuErrchkCuRand( curandCreatePoissonDistribution(posLambda,&posPoisson) );
-        gpuErrchkCuRand( curandCreatePoissonDistribution(negLambda,&negPoisson) );        
+        gpuErrchkCuRand( curandCreatePoissonDistribution(negLambda,&negPoisson) );
         gpuErrchk( cudaMalloc((void **)&states, Dg * Db * sizeof(G)) );
         setup_kernel<G><<<Dg,Db>>>(states);
         gpuErrchk( cudaPeekAtLastError() );
