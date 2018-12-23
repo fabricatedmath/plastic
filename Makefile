@@ -9,7 +9,7 @@ INCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
 NVCCFLAGS = -Ieigen-git-mirror/ -Iinclude/
 
-CXXFLAGS += $(INCLUDES)
+CXXFLAGS += -std=c++17 $(INCLUDES)
 LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcurand -lboost_serialization
 OBJS = main.cpp.o test.cu.o
 TARGET = main
@@ -22,7 +22,7 @@ build: $(TARGET)
 randGen: randGen.cuh randGen.cu
 	$(NVCC) $(NVCCFLAGS) randGen.cu -o randGen $(LIB_CUDA)
 
-main.cpp.o: main.cpp test.h constants.h inits.h type.h
+main.cpp.o: main.cpp test.h constants.h init.h dataset.h type.h
 	$(CXX) $(CXXFLAGS) -c main.cpp -o main.cpp.o
 
 test.cu.o: test.cu err.cuh mem.cuh type.h test.h randGen.cuh

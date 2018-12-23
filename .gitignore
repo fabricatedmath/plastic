@@ -1,3 +1,5 @@
 main
 randGen
 *.o
+*.f
+*.d

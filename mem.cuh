@@ -19,15 +19,15 @@ cudaError_t memcpyDeviceToHost(VectorXf* v, CudaVectorXf* cv) {
     return cudaMemcpy((void**)v->data(), cv->data, v->size() * sizeof(float), cudaMemcpyDeviceToHost);
 }
 
-cudaError_t cudaMalloc(MatrixXf* m, CudaMatrixXf* cm) {
+cudaError_t cudaMalloc(MatrixRXf* m, CudaMatrixXf* cm) {
    return cudaMallocPitch((void**)&cm->data, &cm->pitch, m->cols() * sizeof(float), m->rows());
 }
 
-cudaError_t memcpyHostToDevice(MatrixXf* m, CudaMatrixXf* cm) {
+cudaError_t memcpyHostToDevice(MatrixRXf* m, CudaMatrixXf* cm) {
     return cudaMemcpy2D(cm->data, cm->pitch, m->data(), m->cols() * sizeof(float), m->cols() * sizeof(float), m->rows(), cudaMemcpyHostToDevice);
 }
 
-cudaError_t memcpyDeviceToHost(MatrixXf* m, CudaMatrixXf* cm) {
+cudaError_t memcpyDeviceToHost(MatrixRXf* m, CudaMatrixXf* cm) {
     return cudaMemcpy2D(m->data(), m->cols() * sizeof(float), cm->data, cm->pitch, m->cols() * sizeof(float), m->rows(), cudaMemcpyDeviceToHost);
 }
 

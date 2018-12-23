@@ -3,7 +3,8 @@
 #include "eigen_boost_serialization.hpp"
 #include "type.h"
 #include "test.h"
-#include "inits.h"
+#include "init.h"
+#include "dataset.h"
 
 using namespace std;
 using namespace Eigen;
@@ -14,14 +15,12 @@ int main(int argc, char* argv[]) {
     Test test;
     test.m = m;
     test.v = v;
-    //cout << v << endl;
-    //cout << test.v << endl;
-    //cout << test.m << endl;
-    cout << initW() << endl;
-    cout << endl << endl;
-    cout << initWff() << endl;
 
-    MatrixTransformedDataset transformedDataset = retrieveTransformedDataset();
+    MatrixW<float> w = Init<float>::initW();
+    MatrixWff<float> wff = Init<float>::initWff();
+
+    MatrixTransformedDataset<float> transformedDataset =
+        Dataset<float>::retrieveTransformedDataset();
     cout << transformedDataset.row(0).head(10) << endl;
 
 

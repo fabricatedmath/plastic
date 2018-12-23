@@ -2,11 +2,7 @@
 
 using namespace Eigen;
 
-typedef Matrix<int8_t, Dynamic, Dynamic> MatrixXu;
-typedef Matrix<int8_t, Dynamic, Dynamic, RowMajor> MatrixRXu;
-typedef Matrix<int, Dynamic, Dynamic, RowMajor> MatrixRXi;
-typedef Matrix<double, Dynamic, Dynamic, RowMajor> MatrixRXd;
-typedef Matrix<int8_t, 1, Dynamic> VectorXu;
+typedef Matrix<float, Dynamic, Dynamic, RowMajor> MatrixRXf;
 
 struct CudaMatrixXf {
     float* data;
@@ -31,14 +27,14 @@ struct CudaBuffers {
 };
 
 struct Test {
-    MatrixXf m;
+    MatrixRXf m;
     VectorXf v;
 };
 
 struct StaticState {
-    MatrixXf images;
+    MatrixRXf images;
 };
 
 struct Buffers {
-    MatrixXf buf;
+    MatrixRXf buf;
 };
