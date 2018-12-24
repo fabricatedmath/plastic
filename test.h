@@ -1,6 +1,6 @@
 #pragma once
 
-#include "type.h"
+#include "state.h"
 
-void wrapper(Test test);
+void wrapper(MutableState mutableState, StaticState staticState);
 void wrapper2();

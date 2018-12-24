@@ -9,7 +9,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
-#include "type.h"
+#include "state.h"
 #include "constants.h"
 
 using namespace std;
