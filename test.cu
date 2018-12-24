@@ -65,10 +65,14 @@ void wrapper(MutableState mutableState, StaticState staticState) {
     unsigned long long time;
     unsigned long long* d_time;
     gpuErrchk( cudaMalloc(&d_time, sizeof(unsigned long long)) );
+    
     CudaMutableState cudaMutableState;
     gpuErrchk( cudaMalloc(&mutableState,&cudaMutableState) );
     gpuErrchk( memcpyHostToDevice(&mutableState,&cudaMutableState) );
 
+    CudaStaticState cudaStaticState;
+    gpuErrchk( cudaMalloc(&staticState,&cudaStaticState) );
+    gpuErrchk( memcpyHostToDevice(&staticState,&cudaStaticState) );
 
     void *kernelArgs[] = {
         (void*)&cudaMutableState,
@@ -84,7 +88,6 @@ void wrapper(MutableState mutableState, StaticState staticState) {
     const int smemSize = 0;
     for (int i = 0; i < 10; i++) {
         gpuErrchk( cudaLaunchCooperativeKernel((void*)test_kernel, dimGrid, dimBlock, kernelArgs, smemSize, NULL) );
-//        test_kernel<<<1,5>>>(cudaMutableState, d_time);
         gpuErrchk( cudaPeekAtLastError() );
         gpuErrchk( cudaDeviceSynchronize() );
 
