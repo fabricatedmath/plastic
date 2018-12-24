@@ -3,7 +3,7 @@
 #include <vector>
 #include "err.cuh"
 
-void something() {
+void something2() {
     char array[] = "dogs";
     char *p = array;
     const char *arg = p;
