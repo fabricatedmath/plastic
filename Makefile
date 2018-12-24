@@ -2,16 +2,19 @@ CUDA_INSTALL_PATH := /usr/local/cuda
 
 CXX := g++
 CC := gcc
-LINK := g++ -fPIC
-NVCC := nvcc
+LINK := g++ -dc -fPIC
+NVCC := nvcc -rdc=true
 
 INCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
 NVCCFLAGS = -Ieigen-git-mirror/ -Iinclude/
 
+ALL_CCFLAGS += -dc -Xptxas -dlcm=ca
+
 CXXFLAGS += -std=c++17 $(INCLUDES)
-LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcurand -lboost_serialization
-OBJS = main.cpp.o test.cu.o
+LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcurand -lboost_serialization -lcudadevrt
+GENCODE_FLAGS := -gencode arch=compute_75,code=sm_75
+OBJS = main.cpp.o test.cu.o test_link.cu.o
 TARGET = main
 LINKLINE := $(LINK) -o $(TARGET) $(OBJS) $(LIB_CUDA)
 
@@ -26,7 +29,9 @@ main.cpp.o: main.cpp test.h constants.h init.h dataset.h state.h
 	$(CXX) $(CXXFLAGS) -c main.cpp -o main.cpp.o
 
 test.cu.o: test.cu err.cuh cuda_state.cuh state.h test.h randGen.cuh cuda_utility.cuh
-	$(NVCC) $(NVCCFLAGS) -c test.cu -o test.cu.o
+	echo "dogs"
+	$(NVCC) $(NVCCFLAGS) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c test.cu -o test.cu.o
+	nvcc $(GENCODE_FLAGS) -dlink -o test_link.cu.o test.cu.o -lcudart -lcudadevrt
 
 .SUFFIXES: .c .cpp .cu .o
 %.cu.o: %.cu
@@ -36,6 +41,7 @@ test.cu.o: test.cu err.cuh cuda_state.cuh state.h test.h randGen.cuh cuda_utilit
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJS) Makefile
+	echo "cats"
 	$(LINKLINE)
 
 clean:
