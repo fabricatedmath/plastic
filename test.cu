@@ -5,6 +5,8 @@
 #include "err.cuh"
 #include "randGen.cuh"
 #include "cuda_state.cuh"
+#include "helper_cuda.h"
+#include "cuda_utility.cuh"
 
 using namespace std;
 using namespace Eigen;
@@ -31,6 +33,7 @@ void wrapper2() {
 }
 
 void wrapper(MutableState mutableState, StaticState staticState) {
+    something();
     unsigned long long time;
     unsigned long long* d_time;
     gpuErrchk( cudaMalloc(&d_time, sizeof(unsigned long long)) );

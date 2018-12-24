@@ -25,7 +25,7 @@ randGen: randGen.cuh randGen.cu
 main.cpp.o: main.cpp test.h constants.h init.h dataset.h state.h
 	$(CXX) $(CXXFLAGS) -c main.cpp -o main.cpp.o
 
-test.cu.o: test.cu err.cuh cuda_state.cuh state.h test.h randGen.cuh
+test.cu.o: test.cu err.cuh cuda_state.cuh state.h test.h randGen.cuh cuda_utility.cuh
 	$(NVCC) $(NVCCFLAGS) -c test.cu -o test.cu.o
 
 .SUFFIXES: .c .cpp .cu .o

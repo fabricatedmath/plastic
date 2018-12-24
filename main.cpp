@@ -24,5 +24,9 @@ int main(int argc, char* argv[]) {
         Dataset<float>::retrieveTransformedDataset();
     cout << transformedDataset.row(0).head(10) << endl;
 
+    StaticState staticState;
+    staticState.input = transformedDataset;
+
     wrapper2();
+    wrapper(mutableState, staticState);
 }
