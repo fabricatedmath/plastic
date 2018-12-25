@@ -27,7 +27,12 @@ __global__ void spin_kernel() {
     } while ((clock64() - startTime) < thresh);
 }
 
-__global__ void test_kernel(CudaMutableState cudaMutableState, CudaStaticState cudaStaticState, Rgen rgen, unsigned long long* time) {
+__global__ void test_kernel(CudaMutableState cudaMutableState,
+                            CudaStaticState cudaStaticState,
+                            CudaBuffers buffers,
+                            Rgen rgen,
+                            unsigned long long* time) {
+    
     unsigned long long startTime = clock64();
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     int inputRow = 0;
@@ -148,6 +153,7 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
     void *kernelArgs[] = {
         (void*)&cudaMutableState,
         (void*)&cudaStaticState,
+        (void*)&cudaBuffers,
         (void*)&cudaRgen,
         (void*)&d_time
     };
