@@ -27,6 +27,11 @@ int main(int argc, char* argv[]) {
     StaticState staticState;
     staticState.input = transformedDataset;
 
-    wrapper2();
-    wrapper(mutableState, staticState);
+    cout << staticState.input.row(0).head(10) << endl;
+
+    Buffers buffers;
+    MatrixLgnFiringsBuffer<float> lgnfiringsBuffer = Init<float>::initLgnFiringsBuffer();
+    buffers.lgnfirings = lgnfiringsBuffer;
+
+    wrapper(mutableState, staticState, buffers);
 }

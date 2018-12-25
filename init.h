@@ -19,9 +19,10 @@ class Init {
 public:
     typedef Matrix<T,NBNEUR,NBNEUR,RowMajor> MatrixW;
     typedef Matrix<T,NBNEUR,FFRFSIZE,RowMajor> MatrixWff;
+    typedef Matrix<T,Dynamic,Dynamic,RowMajor> MatrixLgnFiringsBuffer;
 
     static MatrixW initW() {
-        MatrixW w =  MatrixW::Zero(); //MatrixXf::Zero(NBNEUR, NBNEUR);
+        MatrixW w = MatrixW::Zero(); //MatrixXf::Zero(NBNEUR, NBNEUR);
         w.bottomRows(NBI).leftCols(NBE).setRandom(); // Inhbitory neurons receive excitatory inputs from excitatory neurons
         w.rightCols(NBI).setRandom(); // Everybody receives inhibition (including inhibitory neurons)
         w.bottomRows(NBI).rightCols(NBI) =  -w.bottomRows(NBI).rightCols(NBI).cwiseAbs() * WII_MAX;
@@ -38,6 +39,12 @@ public:
         return wff;
     }
 
+    static MatrixLgnFiringsBuffer initLgnFiringsBuffer() {
+        MatrixLgnFiringsBuffer lgnfiringsBuffer =
+            MatrixLgnFiringsBuffer::Zero(NBSTEPSSTIM,FFRFSIZE);
+        return lgnfiringsBuffer;
+    }
+
 private:
     BOOST_STATIC_ASSERT(is_same<float,T>::value || is_same<double,T>::value);
 };
@@ -47,3 +54,6 @@ using MatrixW = typename Init<T>::MatrixW;
 
 template <typename T>
 using MatrixWff = typename Init<T>::MatrixWff;
+
+template <typename T>
+using MatrixLgnFiringsBuffer = typename Init<T>::MatrixLgnFiringsBuffer;

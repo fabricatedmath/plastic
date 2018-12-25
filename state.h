@@ -16,5 +16,5 @@ struct StaticState {
 };
 
 struct Buffers {
-
+    MatrixRXf lgnfirings;
 };

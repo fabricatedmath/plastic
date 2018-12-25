@@ -2,5 +2,4 @@
 
 #include "state.h"
 
-void wrapper(MutableState mutableState, StaticState staticState);
-void wrapper2();
+void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers);

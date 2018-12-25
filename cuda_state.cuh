@@ -90,20 +90,20 @@ cudaError_t memcpyDeviceToHost(StaticState* s, CudaStaticState* cs) {
 
 /* CudaBuffers */
 struct CudaBuffers {
-
+    CudaMatrixXf lgnfirings;
 };
 
 cudaError_t cudaMalloc(Buffers* s, CudaBuffers* cs) {
-    //errRet( cudaMalloc(&s->input,&cs->input) );
+    errRet( cudaMalloc(&s->lgnfirings,&cs->lgnfirings) );
     return cudaSuccess;
 }
 
 cudaError_t memcpyHostToDevice(Buffers* s, CudaBuffers* cs) {
-    //errRet( memcpyHostToDevice(&s->input,&cs->input) );
+    errRet( memcpyHostToDevice(&s->lgnfirings,&cs->lgnfirings) );
     return cudaSuccess;
 }
 
 cudaError_t memcpyDeviceToHost(Buffers* s, CudaBuffers* cs) {
-    //errRet( memcpyDeviceToHost(&s->input,&cs->input) );
+    errRet( memcpyDeviceToHost(&s->lgnfirings,&cs->lgnfirings) );
     return cudaSuccess;
 }

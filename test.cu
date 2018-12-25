@@ -16,74 +16,95 @@ namespace cg = cooperative_groups;
 
 const int rows = 50;
 
-__global__ void test_kernel(CudaMutableState cudaMutableState, unsigned long long* time) {
+typedef RandomGen<curandState> Rgen;
+
+__global__ void spin_kernel() {
     unsigned long long startTime = clock64();
     unsigned long long hz = 2100000000;
-    unsigned long long seconds = 5*2;
+    unsigned long long seconds = 100;
     unsigned long long thresh = hz * seconds;
-    cg::grid_group grid = cg::this_grid();
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx == 0) {
+    do {
+    } while ((clock64() - startTime) < thresh);
+}
+
+__global__ void test_kernel(CudaMutableState cudaMutableState, CudaStaticState cudaStaticState, Rgen rgen, unsigned long long* time) {
+    unsigned long long startTime = clock64();
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    int inputRow = 0;
+    float* rowPtr = getRowPtr(cudaStaticState.input, inputRow);
+    if (id < 10) {
+        curandState g = rgen.get(id);
+        printf("%d:%f\n",id,rgen.sampleUniform(id,&g));
+        printf("%d:%f\n",id,rowPtr[id]);
+        rgen.put(id, g);
+        
         //        printf("%ul\n", thresh);
         //printf("%ul\n", thresh2);
     }
-    do {
-        //        printf("%d\n", idx);
-//    float w = cudaMutableState.w.data[threadIdx.x];
-//    cudaMutableState.w.data[threadIdx.x] = w+1;
-            /*
-            for (int row = 0; row < rows; row++) {
-                float* rowPtr = getRowPtr(cudaMutableState.w, row);
-                float i = rowPtr[threadIdx.x];
-                rowPtr[threadIdx.x] = i+1;
-                //printf("%d",threadIdx.x);
-            }
-            */
-        //        cg::sync(grid);
-    } while ((clock64() - startTime) < thresh);
     unsigned long long endTime = clock64();
-    if (idx == 0) {
+    if (id == 0) {
         *time = (endTime - startTime);
-    }
-    
+    }   
 }
 
-void wrapper2() {
-    typedef RandomGen<curandState,1,2> Rgen;
-    Rgen d_rgen(1.1,1.8);
-    //Rgen* d_rgen = new Rgen(1.8,1.1);
-}
-
-void something() {
-    char array[] = "dogs";
-    char *p = array;
-    const char *arg = p;
-    const char *argv[] = {"dogs"};
+void printSetBlockGridStats(int* thisNumBlocks, int* thisNumThreads) {
+    const char *argv[] = {""};
     
     int argc = 0;
     int device = findCudaDevice(argc, argv);
     cudaDeviceProp prop = { 0 };
-    cout << gpuGetMaxGflopsDeviceId() << endl;
+    //    cout << gpuGetMaxGflopsDeviceId() << endl;
     gpuErrchk( cudaSetDevice(device) );
     gpuErrchk( cudaGetDeviceProperties(&prop, device) );
-    cout << prop.multiProcessorCount << endl;
-    cout << prop.maxThreadsPerMultiProcessor << endl;
-    cout << prop.maxThreadsPerBlock << endl;
-    cout << prop.clockRate << endl;
-    cout << endl;
 
-    int numThreads = 120; //prop.maxThreadsPerMultiProcessor;
+    int numThreads = 120;
     int maxBlocks = prop.multiProcessorCount * (prop.maxThreadsPerMultiProcessor / prop.maxThreadsPerBlock);
     int numSms = prop.multiProcessorCount;
     int numBlocksPerSm = 0;
     checkCudaErrors(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, test_kernel, numThreads, 0));
-    cout << numBlocksPerSm << endl;
-    cout << numBlocksPerSm * numSms << endl;
+    int numBlocks = numBlocksPerSm * numSms;
+    
+    cout << "--------Grid/Block Statistics-----------------------------------------" << endl;
+    cout << endl;
+    cout << "\t\tGlobally" << endl;
+    printf("\tSMs:\t\t\t%d\n", numSms);
+    printf("\tMax Blocks:\t\t%d\n", maxBlocks);
+    cout << endl;
+    cout << "\t\tProgram" << endl;
+    printf("\tBlocks per SM:\t\t%d\n", numBlocksPerSm);
+    printf("\tBlocks:\t\t\t%d\n", numBlocks);
+    printf("\tThreads per Block:\t%d\n", numThreads);
+    printf("\tThreads:\t\t%d\n", numThreads * numBlocks);
+    cout << endl;
+    cout << "----------------------------------------------------------------------" << endl;
+
+    *thisNumBlocks = numBlocks;
+    *thisNumThreads = numThreads;
 }
 
-void wrapper(MutableState mutableState, StaticState staticState) {
-    something();
-//    gpuErrchk( cudaOccupancyMaxActiveBlocksPerMultiprocessor( );
+void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers) {
+    int numBlocks;
+    int numThreads;
+    
+    printSetBlockGridStats(&numBlocks,&numThreads);
+
+    size_t usedBeforeAllocation; 
+    {
+        size_t freeBytes;
+        size_t totalBytes;
+        size_t usedBytes;
+        gpuErrchk( cudaMemGetInfo(&freeBytes,&totalBytes) );
+        usedBytes = totalBytes - freeBytes;
+        usedBeforeAllocation = usedBytes;
+        cout << "--------Memory Pre-Allocation-----------------------------------------" << endl;
+        cout << endl;
+        printf("\tfree:\t\t%d MB\n", freeBytes / (1024*1024));
+        printf("\tused:\t\t%d MB\n", usedBytes / (1024*1024));
+        printf("\ttotal:\t\t%d MB\n", totalBytes / (1024*1024));
+        cout << endl;
+        cout << "----------------------------------------------------------------------" << endl;
+    }
+
     unsigned long long time;
     unsigned long long* d_time;
     gpuErrchk( cudaMalloc(&d_time, sizeof(unsigned long long)) );
@@ -96,17 +117,44 @@ void wrapper(MutableState mutableState, StaticState staticState) {
     gpuErrchk( cudaMalloc(&staticState,&cudaStaticState) );
     gpuErrchk( memcpyHostToDevice(&staticState,&cudaStaticState) );
 
+    CudaBuffers cudaBuffers;
+    gpuErrchk( cudaMalloc(&buffers,&cudaBuffers) );
+    gpuErrchk( memcpyHostToDevice(&buffers,&cudaBuffers) );
+
+    typedef RandomGen<curandState> Rgen;
+    Rgen cudaRgen(numBlocks, numThreads, 1.1, 1.8);
+
+    size_t usedAfterAllocation;
+    size_t allocated;
+    {
+        size_t freeBytes;
+        size_t totalBytes;
+        size_t usedBytes;
+        gpuErrchk( cudaMemGetInfo(&freeBytes,&totalBytes) );
+        usedBytes = totalBytes - freeBytes;
+        usedAfterAllocation = usedBytes;
+        allocated = usedAfterAllocation - usedBeforeAllocation;
+        cout << "--------Memory Post-Allocation----------------------------------------" << endl;
+        cout << endl;
+        printf("\tfree:\t\t%d MB\n", freeBytes / (1024*1024));
+        printf("\tused:\t\t%d MB\n", usedBytes / (1024*1024));
+        printf("\ttotal:\t\t%d MB\n", totalBytes / (1024*1024));
+        cout << endl;
+        printf("\tallocated:\t%d MB\n", allocated / (1024*1024));
+        cout << endl;
+        cout << "----------------------------------------------------------------------" << endl;
+    }
+
     void *kernelArgs[] = {
         (void*)&cudaMutableState,
+        (void*)&cudaStaticState,
+        (void*)&cudaRgen,
         (void*)&d_time
     };
 
-    int numBlocks = 544;
-    int numThreads = 120;
-
-    dim3 dimBlock(numThreads,1,1);
-    dim3 dimGrid(numBlocks,1,1);
-
+    const dim3 dimBlock(numThreads,1,1);
+    const dim3 dimGrid(numBlocks,1,1);
+    
     const int smemSize = 0;
     for (int i = 0; i < 10; i++) {
         gpuErrchk( cudaLaunchCooperativeKernel((void*)test_kernel, dimGrid, dimBlock, kernelArgs, smemSize, NULL) );

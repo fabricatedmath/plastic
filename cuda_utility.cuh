@@ -4,10 +4,7 @@
 #include "err.cuh"
 
 void something2() {
-    char array[] = "dogs";
-    char *p = array;
-    const char *arg = p;
-    const char *argv[] = {"dogs"};
+    const char *argv[] = {""};
     
     int argc = 0;
     int device = findCudaDevice(argc, argv);

@@ -25,17 +25,17 @@ __global__ void setup_kernel(G *state)
     curand_init(1234, id, 0, &state[id]);
 }
 
-template <typename G, int Dg, int Db>
+template <typename G>
 struct RandomGen {
     G *states;
     curandDiscreteDistribution_t posPoisson;
     curandDiscreteDistribution_t negPoisson;
 
-    RandomGen(const double posLambda, const double negLambda) {
+    RandomGen(const int numBlocks, const int numThreads, const double posLambda, const double negLambda) {
         gpuErrchkCuRand( curandCreatePoissonDistribution(posLambda,&posPoisson) );
         gpuErrchkCuRand( curandCreatePoissonDistribution(negLambda,&negPoisson) );
-        gpuErrchk( cudaMalloc((void **)&states, Dg * Db * sizeof(G)) );
-        setup_kernel<G><<<Dg,Db>>>(states);
+        gpuErrchk( cudaMalloc((void **)&states, numBlocks * numThreads * sizeof(G)) );
+        setup_kernel<G><<<numBlocks,numThreads>>>(states);
         gpuErrchk( cudaPeekAtLastError() );
         gpuErrchk( cudaDeviceSynchronize() );
     }
