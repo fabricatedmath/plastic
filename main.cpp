@@ -10,28 +10,42 @@ using namespace std;
 using namespace Eigen;
 
 int main(int argc, char* argv[]) {
-    MatrixXf m = MatrixXf::Random(50,50);
-    VectorXf v = VectorXf::Ones(5);
-
-    MatrixW<float> w = Init<float>::initW();
-    MatrixWff<float> wff = Init<float>::initWff();
-
     MutableState mutableState;
-    mutableState.w = w;
-    mutableState.wff = wff;
+    {
+        MatrixW<float,int> w = Init<float,int>::initW();
+        MatrixWff<float,int> wff = Init<float,int>::initWff();
+        MatrixIncomingSpikes<float,int> incomingSpikes =
+            Init<float,int>::initIncomingSpikes();
+        VectorFirings<float,int> firings = Init<float,int>::initFirings();
 
-    MatrixTransformedDataset<float> transformedDataset =
-        Dataset<float>::retrieveTransformedDataset();
-    cout << transformedDataset.row(0).head(10) << endl;
+        mutableState.w = w;
+        mutableState.wff = wff;
+        mutableState.incomingSpikes = incomingSpikes;
+        mutableState.firings = firings;
+    }
 
     StaticState staticState;
-    staticState.input = transformedDataset;
+    {
+        MatrixTransformedDataset<float> transformedDataset =
+            Dataset<float>::retrieveTransformedDataset();
+        MatrixDelays<float,int> delays = Init<float,int>::initDelays();
 
-    cout << staticState.input.row(0).head(10) << endl;
+        staticState.input = transformedDataset;
+        staticState.delays = delays;
+
+        cout << staticState.input.row(0).head(10) << endl;
+    }
 
     Buffers buffers;
-    MatrixLgnFiringsBuffer<float> lgnfiringsBuffer = Init<float>::initLgnFiringsBuffer();
-    buffers.lgnfirings = lgnfiringsBuffer;
+    {
+        MatrixLgnFiringsBuffer<float,int> lgnfiringsBuffer =
+            Init<float,int>::initLgnFiringsBuffer();
+        VectorNeuronInputsBuffer<float,int> neuronInputsBuffer =
+            Init<float,int>::initNeuronInputsBuffer();
+
+        buffers.lgnfirings = lgnfiringsBuffer;
+        buffers.neuronInputs = neuronInputsBuffer;
+    }
 
     wrapper(mutableState, staticState, buffers);
 }

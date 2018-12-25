@@ -28,7 +28,7 @@ randGen: randGen.cuh randGen.cu
 main.cpp.o: main.cpp test.h constants.h init.h dataset.h state.h
 	$(CXX) $(CXXFLAGS) -c main.cpp -o main.cpp.o
 
-test.cu.o: test.cu err.cuh cuda_state.cuh state.h test.h randGen.cuh cuda_utility.cuh
+test.cu.o: test.cu err.cuh cuda_state.cuh state.h test.h randGen.cuh cuda_utility.cuh constants.h input.cuh
 	echo "dogs"
 	$(NVCC) $(NVCCFLAGS) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c test.cu -o test.cu.o
 	nvcc $(GENCODE_FLAGS) -dlink -o test_link.cu.o test.cu.o -lcudart -lcudadevrt

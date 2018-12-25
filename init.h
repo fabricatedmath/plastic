@@ -14,12 +14,14 @@
 
 using namespace std;
 
-template<typename T>
+template<typename FT, typename IT>
 class Init {
 public:
-    typedef Matrix<T,NBNEUR,NBNEUR,RowMajor> MatrixW;
-    typedef Matrix<T,NBNEUR,FFRFSIZE,RowMajor> MatrixWff;
-    typedef Matrix<T,Dynamic,Dynamic,RowMajor> MatrixLgnFiringsBuffer;
+    /* Mutable State */
+    typedef Matrix<FT,NBNEUR,NBNEUR,RowMajor> MatrixW;
+    typedef Matrix<FT,NBNEUR,FFRFSIZE,RowMajor> MatrixWff;
+    typedef Matrix<IT,NBNEUR,NBNEUR,RowMajor> MatrixIncomingSpikes;
+    typedef Matrix<IT,1,NBNEUR,RowMajor> VectorFirings;
 
     static MatrixW initW() {
         MatrixW w = MatrixW::Zero(); //MatrixXf::Zero(NBNEUR, NBNEUR);
@@ -39,21 +41,66 @@ public:
         return wff;
     }
 
+    static MatrixIncomingSpikes initIncomingSpikes() {
+        MatrixIncomingSpikes incomingSpikes = MatrixIncomingSpikes::Zero();
+        return incomingSpikes;
+    }
+
+    static VectorFirings initFirings() {
+        VectorFirings firings = VectorFirings::Zero();
+        return firings;
+    }
+
+    /* Static State */
+    typedef Matrix<IT,NBNEUR,NBNEUR,RowMajor> MatrixDelays;
+
+    static MatrixDelays initDelays() {
+        MatrixDelays delays = MatrixDelays::Zero();
+        return delays;
+    }
+
+    /* Buffers */
+    typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixLgnFiringsBuffer;
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorNeuronInputsBuffer;
+
     static MatrixLgnFiringsBuffer initLgnFiringsBuffer() {
         MatrixLgnFiringsBuffer lgnfiringsBuffer =
             MatrixLgnFiringsBuffer::Zero(NBSTEPSSTIM,FFRFSIZE);
         return lgnfiringsBuffer;
     }
 
+    static VectorNeuronInputsBuffer initNeuronInputsBuffer() {
+        VectorNeuronInputsBuffer neuronInputsBuffer =
+            VectorNeuronInputsBuffer::Zero();
+        return neuronInputsBuffer;
+    }
+
+
 private:
-    BOOST_STATIC_ASSERT(is_same<float,T>::value || is_same<double,T>::value);
+    BOOST_STATIC_ASSERT(is_same<float,FT>::value || is_same<double,FT>::value);
+    BOOST_STATIC_ASSERT(is_same<int,IT>::value || is_same<long,IT>::value);
 };
 
-template <typename T>
-using MatrixW = typename Init<T>::MatrixW;
+/* Mutable State */
+template <typename FT, typename IT>
+    using MatrixW = typename Init<FT,IT>::MatrixW;
 
-template <typename T>
-using MatrixWff = typename Init<T>::MatrixWff;
+template <typename FT, typename IT>
+    using MatrixWff = typename Init<FT,IT>::MatrixWff;
 
-template <typename T>
-using MatrixLgnFiringsBuffer = typename Init<T>::MatrixLgnFiringsBuffer;
+template <typename FT, typename IT>
+    using MatrixIncomingSpikes = typename Init<FT,IT>::MatrixIncomingSpikes;
+
+template <typename FT, typename IT>
+    using VectorFirings = typename Init<FT,IT>::VectorFirings;
+
+/* Static State */
+template <typename FT, typename IT>
+    using MatrixDelays = typename Init<FT,IT>::MatrixDelays;
+
+/* Buffers */
+template <typename FT, typename IT>
+    using MatrixLgnFiringsBuffer = typename Init<FT,IT>::MatrixLgnFiringsBuffer;
+
+template <typename FT, typename IT>
+    using VectorNeuronInputsBuffer = typename Init<FT,IT>::VectorNeuronInputsBuffer;

@@ -4,7 +4,9 @@
 #include "test.h"
 #include "err.cuh"
 #include "randGen.cuh"
+#include "constants.h"
 #include "cuda_state.cuh"
+#include "input.cuh"
 #include "helper_cuda.h"
 #include "cuda_utility.cuh"
 #include <cooperative_groups.h>
@@ -15,6 +17,7 @@ using namespace Eigen;
 namespace cg = cooperative_groups;
 
 const int rows = 50;
+const int numThreads = 128;
 
 typedef RandomGen<curandState> Rgen;
 
@@ -27,6 +30,22 @@ __global__ void spin_kernel() {
     } while ((clock64() - startTime) < thresh);
 }
 
+__device__ void fillLgnFiringsBuffer(CudaMatrixXf input, CudaMatrixXf lgnfirings, Rgen rgen, int inputRow) {
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    float* rowPtr = getRowPtr(input, inputRow);
+    curandState g = rgen.get(id);
+    float* lgnfiringsRowPtr;
+    const unsigned int tid = threadIdx.x;
+    for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
+        lgnfiringsRowPtr = getRowPtr(lgnfirings, row);
+        for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
+            float rand = rgen.sampleUniform(tid,&g);
+            lgnfiringsRowPtr[i] = rand < rowPtr[i];
+        }
+    }
+    rgen.put(id,g);
+}
+
 __global__ void test_kernel(CudaMutableState cudaMutableState,
                             CudaStaticState cudaStaticState,
                             CudaBuffers buffers,
@@ -34,17 +53,31 @@ __global__ void test_kernel(CudaMutableState cudaMutableState,
                             unsigned long long* time) {
     
     unsigned long long startTime = clock64();
+    __shared__ float sdata[numThreads];
+    cg::thread_block block = cg::this_thread_block();
+    cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(block);
+
+    cg::grid_group grid = cg::this_grid();
+
+    const unsigned int tid = block.thread_rank();
+    
     int id = blockIdx.x * blockDim.x + threadIdx.x;
-    int inputRow = 0;
-    float* rowPtr = getRowPtr(cudaStaticState.input, inputRow);
-    if (id < 10) {
-        curandState g = rgen.get(id);
-        printf("%d:%f\n",id,rgen.sampleUniform(id,&g));
-        printf("%d:%f\n",id,rowPtr[id]);
-        rgen.put(id, g);
-        
-        //        printf("%ul\n", thresh);
-        //printf("%ul\n", thresh2);
+    for (int inputRow = 0; inputRow < 10; inputRow++) {
+        fillLgnFiringsBuffer(cudaStaticState.input, buffers.lgnfirings, rgen, inputRow);
+        cg::sync(grid);
+        for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
+            for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
+                float iff = 0;
+                if (numStepsThisPres < NBSTEPSSTIM) {
+                    iff = computeIFFNeuron(sdata, block, tile32, tid, cudaMutableState.wff, buffers.lgnfirings, numStepsThisPres, row);
+                }
+                iff = iff * VSTIM;
+                
+                if (row == 0 && threadIdx.x == 0) {
+                    printf("%0.3f\n", iff);
+                }
+            }
+        }
     }
     unsigned long long endTime = clock64();
     if (id == 0) {
@@ -62,7 +95,7 @@ void printSetBlockGridStats(int* thisNumBlocks, int* thisNumThreads) {
     gpuErrchk( cudaSetDevice(device) );
     gpuErrchk( cudaGetDeviceProperties(&prop, device) );
 
-    int numThreads = 120;
+//    int numThreads = 128;
     int maxBlocks = prop.multiProcessorCount * (prop.maxThreadsPerMultiProcessor / prop.maxThreadsPerBlock);
     int numSms = prop.multiProcessorCount;
     int numBlocksPerSm = 0;
@@ -159,6 +192,7 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
     };
 
     const dim3 dimBlock(numThreads,1,1);
+    numBlocks = 250;
     const dim3 dimGrid(numBlocks,1,1);
     
     const int smemSize = 0;
@@ -168,8 +202,17 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
         gpuErrchk( cudaDeviceSynchronize() );
 
         gpuErrchk( memcpyDeviceToHost(&mutableState, &cudaMutableState) );
+        gpuErrchk( memcpyDeviceToHost(&buffers, &cudaBuffers) );
         gpuErrchk( cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost) );
         cout << time << endl;
+
+        cout << buffers.lgnfirings.rows() << endl;
+
+        /*
+        for (int row = 0; row < buffers.lgnfirings.rows(); row++) {
+            cout << buffers.lgnfirings.row(row) << endl;
+        }
+        */
     }
 }
 
