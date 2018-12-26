@@ -114,7 +114,7 @@ public:
         return delays;
     }
 
-    typedef Matrix<FT,1,Dynamic,RowMajor> VectorALTDS;
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorALTDS;
     static VectorALTDS initALTDS() {
         //BASEALTD
         //RANDALTD
@@ -126,16 +126,22 @@ public:
     /* Buffers */
     typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixLgnFiringsBuffer;
     static MatrixLgnFiringsBuffer initLgnFiringsBuffer() {
-        MatrixLgnFiringsBuffer lgnfiringsBuffer =
-            MatrixLgnFiringsBuffer::Zero(NBSTEPSSTIM,FFRFSIZE);
-        return lgnfiringsBuffer;
+        return MatrixLgnFiringsBuffer::Zero(NBSTEPSSTIM,FFRFSIZE);
     }
 
     typedef Matrix<FT,1,NBNEUR,RowMajor> VectorNeuronInputsBuffer;
     static VectorNeuronInputsBuffer initNeuronInputsBuffer() {
-        VectorNeuronInputsBuffer neuronInputsBuffer =
-            VectorNeuronInputsBuffer::Zero();
-        return neuronInputsBuffer;
+        return VectorNeuronInputsBuffer::Zero();
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorEachNeurLTD;
+    static VectorEachNeurLTD initEachNeurLTD() {
+        return VectorEachNeurLTD::Zero();
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorEachNeurLTP;
+    static VectorEachNeurLTP initEachNeurLTP() {
+        return VectorEachNeurLTP::Zero();
     }
 
 private:
@@ -156,9 +162,45 @@ template <typename FT, typename IT>
 template <typename FT, typename IT>
     using VectorFirings = typename Init<FT,IT>::VectorFirings;
 
+template <typename FT, typename IT>
+    using VectorV = typename Init<FT,IT>::VectorV;
+
+template <typename FT, typename IT>
+    using VectorVPrev = typename Init<FT,IT>::VectorVPrev;
+
+template <typename FT, typename IT>
+    using VectorVThresh = typename Init<FT,IT>::VectorVThresh;
+
+template <typename FT, typename IT>
+    using VectorVLongtrace = typename Init<FT,IT>::VectorVLongtrace;
+
+template <typename FT, typename IT>
+    using VectorVPos = typename Init<FT,IT>::VectorVPos;
+
+template <typename FT, typename IT>
+    using VectorVNeg = typename Init<FT,IT>::VectorVNeg;
+
+template <typename FT, typename IT>
+    using VectorXPlastLat = typename Init<FT,IT>::VectorXPlastLat;
+
+template <typename FT, typename IT>
+    using VectorXPlastFF = typename Init<FT,IT>::VectorXPlastFF;
+
+template <typename FT, typename IT>
+    using VectorWadap = typename Init<FT,IT>::VectorWadap;
+
+template <typename FT, typename IT>
+    using VectorZ = typename Init<FT,IT>::VectorZ;
+
+template <typename FT, typename IT>
+    using VectorSpikesThisStep = typename Init<FT,IT>::VectorSpikesThisStep;
+
 /* Static State */
 template <typename FT, typename IT>
     using MatrixDelays = typename Init<FT,IT>::MatrixDelays;
+
+template <typename FT, typename IT>
+    using VectorALTDS = typename Init<FT,IT>::VectorALTDS;
 
 /* Buffers */
 template <typename FT, typename IT>
@@ -166,3 +208,9 @@ template <typename FT, typename IT>
 
 template <typename FT, typename IT>
     using VectorNeuronInputsBuffer = typename Init<FT,IT>::VectorNeuronInputsBuffer;
+
+template <typename FT, typename IT>
+    using VectorEachNeurLTD = typename Init<FT,IT>::VectorEachNeurLTD;
+
+template <typename FT, typename IT>
+    using VectorEachNeurLTP = typename Init<FT,IT>::VectorEachNeurLTP;

@@ -30,9 +30,9 @@ __global__ void spin_kernel() {
     } while ((clock64() - startTime) < thresh);
 }
 
-__device__ void fillLgnFiringsBuffer(CudaMatrixXf input, CudaMatrixXf lgnfirings, Rgen rgen, int inputRow) {
+__device__ void fillLgnFiringsBuffer(const CudaMatrixXf input, CudaMatrixXf lgnfirings, Rgen rgen, int inputRow) {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
-    float* rowPtr = getRowPtr(input, inputRow);
+    const float* rowPtr = getRowPtr(input, inputRow);
     curandState g = rgen.get(id);
     float* lgnfiringsRowPtr;
     const unsigned int tid = threadIdx.x;
@@ -46,9 +46,9 @@ __device__ void fillLgnFiringsBuffer(CudaMatrixXf input, CudaMatrixXf lgnfirings
     rgen.put(id,g);
 }
 
-__global__ void test_kernel(CudaMutableState cudaMutableState,
-                            CudaStaticState cudaStaticState,
-                            CudaBuffers buffers,
+__global__ void test_kernel(CudaMutableState ms,
+                            const CudaStaticState ss,
+                            CudaBuffers b,
                             Rgen rgen,
                             unsigned long long* time) {
     
@@ -63,16 +63,16 @@ __global__ void test_kernel(CudaMutableState cudaMutableState,
     
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     for (int inputRow = 0; inputRow < 100; inputRow++) {
-        fillLgnFiringsBuffer(cudaStaticState.input, buffers.lgnfirings, rgen, inputRow);
+        fillLgnFiringsBuffer(ss.input, b.lgnfirings, rgen, inputRow);
         cg::sync(grid);
         for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
                 float iff = 0;
                 if (numStepsThisPres < NBSTEPSSTIM) {
-                    iff = VSTIM * computeIFFNeuron(sdata, block, tile32, tid, cudaMutableState.wff, buffers.lgnfirings, numStepsThisPres, row);
+                    iff = VSTIM * computeIFFNeuron(sdata, block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
                 }
 
-                float ilat = LATCONNMULT * VSTIM * computeILATNeuron(sdata, block, tile32, tid, cudaMutableState.w, cudaMutableState.incomingSpikes, cudaMutableState.firings, cudaStaticState.delays, row);
+                float ilat = LATCONNMULT * VSTIM * computeILATNeuron(sdata, block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
 
                 //this adds 2.75 us per iter out of 8.7 us total
                 // curandState g = rgen.get(id);
@@ -91,7 +91,7 @@ __global__ void test_kernel(CudaMutableState cudaMutableState,
                 //float posNoise = 0;
                 //float negNoise = 0;
 
-                buffers.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
+                b.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
                 /*
                 if (row == 0 && threadIdx.x == 0) {
                     printf("%0.3f\n", iff);

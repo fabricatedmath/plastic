@@ -19,8 +19,8 @@ __device__ float computeIFFNeuron
 {
     float acc = 0;
 
-    float* rowLgnFirings = getRowPtr(lgnFiringsBuffer, inputRow);
-    float* rowWff = getRowPtr(wff, row);
+    const float* rowLgnFirings = getRowPtr(lgnFiringsBuffer, inputRow);
+    const float* rowWff = getRowPtr(wff, row);
     #pragma unroll
     for (int i = tid; i < FFRFSIZE; i+=block.size()) {
         float a = rowLgnFirings[i];
@@ -54,16 +54,16 @@ __device__ float computeILATNeuron
     const cg::thread_block block,
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
-    CudaMatrixXf w,
-    CudaMatrixXi incomingSpikes,
-    CudaVectorXi firings,
-    CudaMatrixXi delays,
+    const CudaMatrixXf w,
+    const CudaMatrixXi incomingSpikes,
+    const CudaVectorXi firings,
+    const CudaMatrixXi delays,
     const int row
 )
 {
     int* incomingSpikesRow = getRowPtr(incomingSpikes, row);
-    int* delaysRow = getRowPtr(delays, row);
-    float* wRow = getRowPtr(w, row);
+    const int* delaysRow = getRowPtr(delays, row);
+    const float* wRow = getRowPtr(w, row);
 
     float acc = 0;
 

@@ -26,9 +26,7 @@ struct MutableState {
     VectorXf wadap;
     VectorXf z;
 
-    VectorXi spikesThisStep;
     VectorXi isSpiking;
-
 };
 
 struct StaticState {
