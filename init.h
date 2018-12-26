@@ -18,31 +18,31 @@ template<typename FT, typename IT>
 class Init {
 public:
     /* Mutable State */
-    typedef Matrix<FT,NBNEUR,NBNEUR,RowMajor> MatrixW;
-    typedef Matrix<FT,NBNEUR,FFRFSIZE,RowMajor> MatrixWff;
-    typedef Matrix<IT,NBNEUR,NBNEUR,RowMajor> MatrixIncomingSpikes;
+    typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixW;
+    typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixWff;
+    typedef Matrix<IT,Dynamic,Dynamic,RowMajor> MatrixIncomingSpikes;
     typedef Matrix<IT,1,NBNEUR,RowMajor> VectorFirings;
 
     static MatrixW initW() {
-        MatrixW w = MatrixW::Zero(); //MatrixXf::Zero(NBNEUR, NBNEUR);
+        MatrixW w = MatrixW::Zero(NBNEUR,NBNEUR); //MatrixXf::Zero(NBNEUR, NBNEUR);
         w.bottomRows(NBI).leftCols(NBE).setRandom(); // Inhbitory neurons receive excitatory inputs from excitatory neurons
         w.rightCols(NBI).setRandom(); // Everybody receives inhibition (including inhibitory neurons)
         w.bottomRows(NBI).rightCols(NBI) =  -w.bottomRows(NBI).rightCols(NBI).cwiseAbs() * WII_MAX;
         w.topRows(NBE).rightCols(NBI) = -w.topRows(NBE).rightCols(NBI).cwiseAbs() * WIE_MAX;
         w.bottomRows(NBI).leftCols(NBE) = w.bottomRows(NBI).leftCols(NBE).cwiseAbs() * WEI_MAX;
-        w = w - w.cwiseProduct(MatrixW::Identity()); // Diagonal lateral weights are 0 (no autapses !)
+        w = w - w.cwiseProduct(MatrixW::Identity(NBNEUR,NBNEUR)); // Diagonal lateral weights are 0 (no autapses !)
         return w;
     }
 
     static MatrixWff initWff() {
-        MatrixWff wff = MatrixWff::Zero();
-        wff = (WFFINITMIN + (WFFINITMAX-WFFINITMIN) * MatrixWff::Random().cwiseAbs().array()).cwiseMin(MAXW);
+        MatrixWff wff = MatrixWff::Zero(NBNEUR,FFRFSIZE);
+        wff = (WFFINITMIN + (WFFINITMAX-WFFINITMIN) * MatrixWff::Random(NBNEUR,FFRFSIZE).cwiseAbs().array()).cwiseMin(MAXW);
         wff.bottomRows(NBI).setZero();
         return wff;
     }
 
     static MatrixIncomingSpikes initIncomingSpikes() {
-        MatrixIncomingSpikes incomingSpikes = MatrixIncomingSpikes::Zero();
+        MatrixIncomingSpikes incomingSpikes = MatrixIncomingSpikes::Zero(NBNEUR,NBNEUR);
         return incomingSpikes;
     }
 
@@ -52,10 +52,10 @@ public:
     }
 
     /* Static State */
-    typedef Matrix<IT,NBNEUR,NBNEUR,RowMajor> MatrixDelays;
+    typedef Matrix<IT,Dynamic,Dynamic,RowMajor> MatrixDelays;
 
     static MatrixDelays initDelays() {
-        MatrixDelays delays = MatrixDelays::Zero();
+        MatrixDelays delays = MatrixDelays::Zero(NBNEUR,NBNEUR);
         return delays;
     }
 

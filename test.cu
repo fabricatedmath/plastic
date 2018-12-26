@@ -73,22 +73,23 @@ __global__ void test_kernel(CudaMutableState cudaMutableState,
                 }
 
                 float ilat = LATCONNMULT * VSTIM * computeILATNeuron(sdata, block, tile32, tid, cudaMutableState.w, cudaMutableState.incomingSpikes, cudaMutableState.firings, cudaStaticState.delays, row);
-                
-                curandState g = rgen.get(id);
-                float posNoise = rgen.samplePosPoisson(id,&g);
-                float negNoise = rgen.sampleNegPoisson(id,&g);
-                rgen.put(id,g);
+
+                //this adds 2.75 us per iter out of 8.7 us total
+                // curandState g = rgen.get(id);
+                // float posNoise = rgen.samplePosPoisson(id,&g);
+                // float negNoise = rgen.sampleNegPoisson(id,&g);
+                // rgen.put(id,g);
                 
 
-                /*
+                //this is 5.95 us total
                 curandState g = rgen.get(id);
                 float posNoise = rgen.sampleUniform(id,&g);
                 float negNoise = rgen.sampleUniform(id,&g);
                 rgen.put(id,g);
-                */
-
+                
+                //this is 3.59 us total
                 //float posNoise = 0;
-//                float negNoise = 0;
+                //float negNoise = 0;
 
                 buffers.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
                 /*
@@ -180,7 +181,8 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
     gpuErrchk( cudaMalloc(&buffers,&cudaBuffers) );
     gpuErrchk( memcpyHostToDevice(&buffers,&cudaBuffers) );
 
-    numBlocks = 120;
+    numBlocks = min(NBNEUR,numBlocks);
+    cout << "num blocks: " << numBlocks << endl;
     typedef RandomGen<curandState> Rgen;
     Rgen cudaRgen(numBlocks, numThreads, 1.1, 1.8);
 
