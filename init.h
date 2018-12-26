@@ -19,10 +19,6 @@ class Init {
 public:
     /* Mutable State */
     typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixW;
-    typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixWff;
-    typedef Matrix<IT,Dynamic,Dynamic,RowMajor> MatrixIncomingSpikes;
-    typedef Matrix<IT,1,NBNEUR,RowMajor> VectorFirings;
-
     static MatrixW initW() {
         MatrixW w = MatrixW::Zero(NBNEUR,NBNEUR); //MatrixXf::Zero(NBNEUR, NBNEUR);
         w.bottomRows(NBI).leftCols(NBE).setRandom(); // Inhbitory neurons receive excitatory inputs from excitatory neurons
@@ -34,6 +30,7 @@ public:
         return w;
     }
 
+    typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixWff;
     static MatrixWff initWff() {
         MatrixWff wff = MatrixWff::Zero(NBNEUR,FFRFSIZE);
         wff = (WFFINITMIN + (WFFINITMAX-WFFINITMIN) * MatrixWff::Random(NBNEUR,FFRFSIZE).cwiseAbs().array()).cwiseMin(MAXW);
@@ -41,40 +38,105 @@ public:
         return wff;
     }
 
+    typedef Matrix<IT,Dynamic,Dynamic,RowMajor> MatrixIncomingSpikes;
     static MatrixIncomingSpikes initIncomingSpikes() {
-        MatrixIncomingSpikes incomingSpikes = MatrixIncomingSpikes::Zero(NBNEUR,NBNEUR);
-        return incomingSpikes;
+        return MatrixIncomingSpikes::Zero(NBNEUR,NBNEUR);
     }
 
+    typedef Matrix<IT,1,NBNEUR,RowMajor> VectorFirings;
     static VectorFirings initFirings() {
-        VectorFirings firings = VectorFirings::Zero();
-        return firings;
+        return VectorFirings::Zero();
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorV;
+    static VectorV initV() {
+        return VectorV::Constant(IZHREST);
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorVPrev;
+    static VectorVPrev initVPrev() {
+        return initV();
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorVThresh;
+    static VectorVThresh initVThresh() {
+        return VectorVThresh::Constant(VTREST);
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorVLongtrace;
+    static VectorVLongtrace initVLongtrace() {
+        VectorV v = initV();
+        return (v.array() - THETAVLONGTRACE).cwiseMax(0);
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorVPos;
+    static VectorVPos initVPos() {
+        return initV();
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorVNeg;
+    static VectorVNeg initVNeg() {
+        return initV();
+    }
+
+    typedef Matrix<FT,1,FFRFSIZE,RowMajor> VectorXPlastFF;
+    static VectorXPlastFF initXPlastFF() {
+        return VectorXPlastFF::Zero();
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorXPlastLat;
+    static VectorXPlastLat initXPlastLat() {
+        return VectorXPlastLat::Zero();
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorWadap;
+    static VectorWadap initWadap() {
+        return VectorWadap::Zero();
+    }
+
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorZ;
+    static VectorZ initZ() {
+        return VectorZ::Zero();
+    }
+
+    typedef Matrix<IT,1,NBNEUR,RowMajor> VectorIsSpiking;
+    static VectorIsSpiking initIsSpiking() {
+        return VectorIsSpiking::Zero();
     }
 
     /* Static State */
     typedef Matrix<IT,Dynamic,Dynamic,RowMajor> MatrixDelays;
-
     static MatrixDelays initDelays() {
         MatrixDelays delays = MatrixDelays::Zero(NBNEUR,NBNEUR);
+
+        //TODO
+
         return delays;
+    }
+
+    typedef Matrix<FT,1,Dynamic,RowMajor> VectorALTDS;
+    static VectorALTDS initALTDS() {
+        //BASEALTD
+        //RANDALTD
+        //RAND_MAX
+        //TODO
+        return VectorALTDS::Zero();
     }
 
     /* Buffers */
     typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixLgnFiringsBuffer;
-    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorNeuronInputsBuffer;
-
     static MatrixLgnFiringsBuffer initLgnFiringsBuffer() {
         MatrixLgnFiringsBuffer lgnfiringsBuffer =
             MatrixLgnFiringsBuffer::Zero(NBSTEPSSTIM,FFRFSIZE);
         return lgnfiringsBuffer;
     }
 
+    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorNeuronInputsBuffer;
     static VectorNeuronInputsBuffer initNeuronInputsBuffer() {
         VectorNeuronInputsBuffer neuronInputsBuffer =
             VectorNeuronInputsBuffer::Zero();
         return neuronInputsBuffer;
     }
-
 
 private:
     BOOST_STATIC_ASSERT(is_same<float,FT>::value || is_same<double,FT>::value);

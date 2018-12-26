@@ -12,14 +12,35 @@ struct MutableState {
     MatrixRXf wff;
     MatrixRXi incomingSpikes;
     VectorXi firings;
+
+    VectorXf v;
+    VectorXf vprev;
+    VectorXf vthresh;
+    VectorXf vlongtrace;
+    VectorXf vpos;
+    VectorXf vneg;
+
+    VectorXf xplastLat;
+    VectorXf xplastFF;
+
+    VectorXf wadap;
+    VectorXf z;
+
+    VectorXi spikesThisStep;
+    VectorXi isSpiking;
+
 };
 
 struct StaticState {
     MatrixRXf input;
     MatrixRXi delays;
+    VectorXf altds;
 };
 
 struct Buffers {
     MatrixRXf lgnfirings;
     VectorXf neuronInputs;
+
+    VectorXf eachNeurLTD;
+    VectorXf eachNeurLTP;
 };

@@ -27,3 +27,10 @@
 #define NBSTEPSSTIM (NBSTEPSPERPRES - TIMEZEROINPUT)
 
 #define VSTIM 1.0
+
+#define IZHREST -70.5
+#define THETAVLONGTRACE -45.3
+#define VTREST -50.4
+
+#define BASEALTD (14e-5 * 1.5 * 1.0)
+#define RANDALTD 0.0

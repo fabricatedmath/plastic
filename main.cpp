@@ -47,5 +47,5 @@ int main(int argc, char* argv[]) {
         buffers.neuronInputs = neuronInputsBuffer;
     }
 
-    wrapper(mutableState, staticState, buffers);
+    //    wrapper(mutableState, staticState, buffers);
 }
