@@ -62,21 +62,42 @@ __global__ void test_kernel(CudaMutableState cudaMutableState,
     const unsigned int tid = block.thread_rank();
     
     int id = blockIdx.x * blockDim.x + threadIdx.x;
-    for (int inputRow = 0; inputRow < 10; inputRow++) {
+    for (int inputRow = 0; inputRow < 100; inputRow++) {
         fillLgnFiringsBuffer(cudaStaticState.input, buffers.lgnfirings, rgen, inputRow);
         cg::sync(grid);
         for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
                 float iff = 0;
                 if (numStepsThisPres < NBSTEPSSTIM) {
-                    iff = computeIFFNeuron(sdata, block, tile32, tid, cudaMutableState.wff, buffers.lgnfirings, numStepsThisPres, row);
+                    iff = VSTIM * computeIFFNeuron(sdata, block, tile32, tid, cudaMutableState.wff, buffers.lgnfirings, numStepsThisPres, row);
                 }
-                iff = iff * VSTIM;
+
+                float ilat = LATCONNMULT * VSTIM * computeILATNeuron(sdata, block, tile32, tid, cudaMutableState.w, cudaMutableState.incomingSpikes, cudaMutableState.firings, cudaStaticState.delays, row);
                 
+                curandState g = rgen.get(id);
+                float posNoise = rgen.samplePosPoisson(id,&g);
+                float negNoise = rgen.sampleNegPoisson(id,&g);
+                rgen.put(id,g);
+                
+
+                /*
+                curandState g = rgen.get(id);
+                float posNoise = rgen.sampleUniform(id,&g);
+                float negNoise = rgen.sampleUniform(id,&g);
+                rgen.put(id,g);
+                */
+
+                //float posNoise = 0;
+//                float negNoise = 0;
+
+                buffers.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
+                /*
                 if (row == 0 && threadIdx.x == 0) {
                     printf("%0.3f\n", iff);
                 }
+                */
             }
+            cg::sync(grid);
         }
     }
     unsigned long long endTime = clock64();
@@ -159,6 +180,7 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
     gpuErrchk( cudaMalloc(&buffers,&cudaBuffers) );
     gpuErrchk( memcpyHostToDevice(&buffers,&cudaBuffers) );
 
+    numBlocks = 120;
     typedef RandomGen<curandState> Rgen;
     Rgen cudaRgen(numBlocks, numThreads, 1.1, 1.8);
 
@@ -191,13 +213,16 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
         (void*)&d_time
     };
 
+    void *spinKernelArgs[] = {
+    };
+
     const dim3 dimBlock(numThreads,1,1);
-    numBlocks = 250;
     const dim3 dimGrid(numBlocks,1,1);
     
     const int smemSize = 0;
     for (int i = 0; i < 10; i++) {
         gpuErrchk( cudaLaunchCooperativeKernel((void*)test_kernel, dimGrid, dimBlock, kernelArgs, smemSize, NULL) );
+        //gpuErrchk( cudaLaunchCooperativeKernel((void*)spin_kernel, dimGrid, dimBlock, spinKernelArgs, smemSize, NULL) );
         gpuErrchk( cudaPeekAtLastError() );
         gpuErrchk( cudaDeviceSynchronize() );
 
