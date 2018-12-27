@@ -30,7 +30,7 @@ __global__ void spin_kernel() {
     } while ((clock64() - startTime) < thresh);
 }
 
-__device__ void fillLgnFiringsBuffer(const CudaMatrixXf input, CudaMatrixXf lgnfirings, Rgen rgen, int inputRow) {
+__device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, Rgen rgen, int inputRow) {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     const float* rowPtr = getRowPtr(input, inputRow);
     curandState g = rgen.get(id);
@@ -41,6 +41,32 @@ __device__ void fillLgnFiringsBuffer(const CudaMatrixXf input, CudaMatrixXf lgnf
         for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
             float rand = rgen.sampleUniform(tid,&g);
             lgnfiringsRowPtr[i] = rand < rowPtr[i];
+        }
+    }
+    rgen.put(id,g);
+}
+
+__device__ void fillLgnFiringsBuffer(const CudaMatrixXf input, CudaMatrixXf lgnfirings, CudaMatrixXi poissonNoise, Rgen rgen, int inputRow) {
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    const float* rowPtr = getRowPtr(input, inputRow);
+    curandState g = rgen.get(id);
+    float* lgnfiringsRowPtr;
+    const unsigned int tid = threadIdx.x;
+    for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
+        lgnfiringsRowPtr = getRowPtr(lgnfirings, row);
+        for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
+            float rand = rgen.sampleUniform(tid,&g);
+            lgnfiringsRowPtr[i] = rand < rowPtr[i];
+        }
+    }
+
+    int* poissonNoiseRowPtr; 
+    for (int row = blockIdx.x; row < NBSTEPSPERPRES; row += gridDim.x) {
+        poissonNoiseRowPtr = getRowPtr(poissonNoise, row);
+        for (int i = tid; i < NBNEUR; i += blockDim.x) {
+            int rand1 = rgen.samplePosPoisson(tid,&g);
+            int rand2 = rgen.sampleNegPoisson(tid,&g);
+            poissonNoiseRowPtr[i] = rand1 + rand2;
         }
     }
     rgen.put(id,g);
@@ -63,7 +89,8 @@ __global__ void test_kernel(CudaMutableState ms,
     
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     for (int inputRow = 0; inputRow < 100; inputRow++) {
-        fillLgnFiringsBuffer(ss.input, b.lgnfirings, rgen, inputRow);
+        fillLgnFiringsBuffer(ss.input, b.lgnfirings, b.poissonNoise, rgen, inputRow);
+//        fillBuffers(ss.input, b.lgnfirings, rgen, inputRow);
         cg::sync(grid);
         for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
@@ -79,19 +106,31 @@ __global__ void test_kernel(CudaMutableState ms,
                 // float posNoise = rgen.samplePosPoisson(id,&g);
                 // float negNoise = rgen.sampleNegPoisson(id,&g);
                 // rgen.put(id,g);
-                
 
                 //this is 5.95 us total
-                curandState g = rgen.get(id);
-                float posNoise = rgen.sampleUniform(id,&g);
-                float negNoise = rgen.sampleUniform(id,&g);
-                rgen.put(id,g);
                 
+                // curandState g = rgen.get(id);
+                // float posNoise = rgen.sampleUniform(id,&g);
+                // float negNoise = rgen.sampleUniform(id,&g);
+                // rgen.put(id,g);
+                
+
                 //this is 3.59 us total
                 //float posNoise = 0;
                 //float negNoise = 0;
+                
+                //b.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
+                
+                int* noiseRowPtr = getRowPtr(b.poissonNoise, numStepsThisPres);
+                float noise = noiseRowPtr[row];
+                b.neuronInputs.data[row] = iff + ilat + noise;
+                
 
-                b.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
+                
+                
+
+                //b.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
+
                 /*
                 if (row == 0 && threadIdx.x == 0) {
                     printf("%0.3f\n", iff);

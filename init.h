@@ -129,6 +129,11 @@ public:
         return MatrixLgnFiringsBuffer::Zero(NBSTEPSSTIM,FFRFSIZE);
     }
 
+    typedef Matrix<IT,Dynamic,Dynamic,RowMajor> MatrixPoissonNoiseBuffer;
+    static MatrixPoissonNoiseBuffer initPoissonNoiseBuffer() {
+        return MatrixPoissonNoiseBuffer::Zero(NBSTEPSPERPRES,NBNEUR);
+    }
+
     typedef Matrix<FT,1,NBNEUR,RowMajor> VectorNeuronInputsBuffer;
     static VectorNeuronInputsBuffer initNeuronInputsBuffer() {
         return VectorNeuronInputsBuffer::Zero();
@@ -205,6 +210,9 @@ template <typename FT, typename IT>
 /* Buffers */
 template <typename FT, typename IT>
     using MatrixLgnFiringsBuffer = typename Init<FT,IT>::MatrixLgnFiringsBuffer;
+
+template <typename FT, typename IT>
+    using MatrixPoissonNoiseBuffer = typename Init<FT,IT>::MatrixPoissonNoiseBuffer;
 
 template <typename FT, typename IT>
     using VectorNeuronInputsBuffer = typename Init<FT,IT>::VectorNeuronInputsBuffer;

@@ -207,6 +207,7 @@ cudaError_t memcpyDeviceToHost(StaticState* s, CudaStaticState* cs) {
 /* CudaBuffers */
 struct CudaBuffers {
     CudaMatrixXf lgnfirings;
+    CudaMatrixXi poissonNoise;
     CudaVectorXf neuronInputs;
     CudaVectorXf eachNeurLTD;
     CudaVectorXf eachNeurLTP;
@@ -214,6 +215,7 @@ struct CudaBuffers {
 
 cudaError_t cudaMalloc(Buffers* s, CudaBuffers* cs) {
     errRet( cudaMalloc(&s->lgnfirings,&cs->lgnfirings) );
+    errRet( cudaMalloc(&s->poissonNoise,&cs->poissonNoise) );
     errRet( cudaMalloc(&s->neuronInputs,&cs->neuronInputs) );
     errRet( cudaMalloc(&s->eachNeurLTD,&cs->eachNeurLTD) );
     errRet( cudaMalloc(&s->eachNeurLTP,&cs->eachNeurLTP) );
@@ -222,6 +224,7 @@ cudaError_t cudaMalloc(Buffers* s, CudaBuffers* cs) {
 
 cudaError_t memcpyHostToDevice(Buffers* s, CudaBuffers* cs) {
     errRet( memcpyHostToDevice(&s->lgnfirings,&cs->lgnfirings) );
+    errRet( memcpyHostToDevice(&s->poissonNoise,&cs->poissonNoise) );
     errRet( memcpyHostToDevice(&s->neuronInputs,&cs->neuronInputs) );
     errRet( memcpyHostToDevice(&s->eachNeurLTD,&cs->eachNeurLTD) );
     errRet( memcpyHostToDevice(&s->eachNeurLTP,&cs->eachNeurLTP) );
@@ -230,6 +233,7 @@ cudaError_t memcpyHostToDevice(Buffers* s, CudaBuffers* cs) {
 
 cudaError_t memcpyDeviceToHost(Buffers* s, CudaBuffers* cs) {
     errRet( memcpyDeviceToHost(&s->lgnfirings,&cs->lgnfirings) );
+    errRet( memcpyDeviceToHost(&s->poissonNoise,&cs->poissonNoise) );
     errRet( memcpyDeviceToHost(&s->neuronInputs,&cs->neuronInputs) );
     errRet( memcpyDeviceToHost(&s->eachNeurLTD,&cs->eachNeurLTD) );
     errRet( memcpyDeviceToHost(&s->eachNeurLTP,&cs->eachNeurLTP) );

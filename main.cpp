@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
 
     RowVectorXi v = RowVectorXi::NullaryExpr(10, poisson );
     std::cout << v << "\n";
-    exit(0);
+
 
     MutableState mutableState;
     {
@@ -53,6 +53,7 @@ int main(int argc, char* argv[]) {
     Buffers buffers;
     {
         buffers.lgnfirings = Init<float,int>::initLgnFiringsBuffer();
+        buffers.poissonNoise = Init<float,int>::initPoissonNoiseBuffer();
         buffers.neuronInputs = Init<float,int>::initNeuronInputsBuffer();
 
         buffers.eachNeurLTD = Init<float,int>::initEachNeurLTD();
@@ -62,5 +63,5 @@ int main(int argc, char* argv[]) {
 
     cout << staticState.input.row(0).head(10) << endl;
 
-    //    wrapper(mutableState, staticState, buffers);
+    wrapper(mutableState, staticState, buffers);
 }
