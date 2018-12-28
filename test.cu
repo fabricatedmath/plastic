@@ -93,6 +93,7 @@ __global__ void test_kernel(CudaMutableState ms,
 //        fillBuffers(ss.input, b.lgnfirings, rgen, inputRow);
         cg::sync(grid);
         for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
+            /* Calculate Inputs with block per Neuron */
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
                 float iff = 0;
                 if (numStepsThisPres < NBSTEPSSTIM) {
@@ -124,20 +125,21 @@ __global__ void test_kernel(CudaMutableState ms,
                 int* noiseRowPtr = getRowPtr(b.poissonNoise, numStepsThisPres);
                 float noise = noiseRowPtr[row];
                 b.neuronInputs.data[row] = iff + ilat + noise;
-                
-
-                
-                
-
-                //b.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
-
-                /*
-                if (row == 0 && threadIdx.x == 0) {
-                    printf("%0.3f\n", iff);
-                }
-                */
             }
+            /* Sync blocks from Input calculation */
             cg::sync(grid);
+
+            /* Neuron per thread stuff */
+            for (int neuron = id; neuron < NBNEUR; neuron += gridDim.x) {
+                float v = ms.v.data[id];
+                float i = b.neuronInputs.data[id];
+                float wadap = ms.wadap.data[id];
+                float z = ms.z.data[id];
+                float vthresh = ms.vthresh.data[id];
+                int isspiking = ms.isSpiking.data[id];
+            }
+
+            /* Plasticity */
         }
     }
     unsigned long long endTime = clock64();
@@ -271,10 +273,7 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
         gpuErrchk( memcpyDeviceToHost(&buffers, &cudaBuffers) );
         gpuErrchk( cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost) );
         cout << time << endl;
-
-        cout << buffers.lgnfirings.rows() << endl;
-
-        /*
+/*
         for (int row = 0; row < buffers.lgnfirings.rows(); row++) {
             cout << buffers.lgnfirings.row(row) << endl;
         }
