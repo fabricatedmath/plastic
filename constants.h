@@ -28,9 +28,23 @@
 
 #define VSTIM 1.0
 
+#define GLEAK 30.0
+#define ELEAK -70.6
+
 #define IZHREST -70.5
 #define THETAVLONGTRACE -45.3
+#define THETAVPOS -45.3
+#define THETAVNEG ELEAK
+#define VRESET ELEAK
 #define VTREST -50.4
-
+#define VTMAX -30.4
+#define VPEAK 20
+#define MINV -80.0
 #define BASEALTD (14e-5 * 1.5 * 1.0)
 #define RANDALTD 0.0
+
+#define DELTAT 2.0
+#define CONSTA 4
+#define CONSTB 0.0805
+#define CONSTC 281.0
+#define ISP 400.0

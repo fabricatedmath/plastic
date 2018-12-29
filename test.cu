@@ -30,23 +30,7 @@ __global__ void spin_kernel() {
     } while ((clock64() - startTime) < thresh);
 }
 
-__device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, Rgen rgen, int inputRow) {
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
-    const float* rowPtr = getRowPtr(input, inputRow);
-    curandState g = rgen.get(id);
-    float* lgnfiringsRowPtr;
-    const unsigned int tid = threadIdx.x;
-    for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
-        lgnfiringsRowPtr = getRowPtr(lgnfirings, row);
-        for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
-            float rand = rgen.sampleUniform(tid,&g);
-            lgnfiringsRowPtr[i] = rand < rowPtr[i];
-        }
-    }
-    rgen.put(id,g);
-}
-
-__device__ void fillLgnFiringsBuffer(const CudaMatrixXf input, CudaMatrixXf lgnfirings, CudaMatrixXi poissonNoise, Rgen rgen, int inputRow) {
+__device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, CudaMatrixXi poissonNoise, Rgen rgen, int inputRow) {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     const float* rowPtr = getRowPtr(input, inputRow);
     curandState g = rgen.get(id);
@@ -88,8 +72,9 @@ __global__ void test_kernel(CudaMutableState ms,
     const unsigned int tid = block.thread_rank();
     
     int id = blockIdx.x * blockDim.x + threadIdx.x;
+
     for (int inputRow = 0; inputRow < 100; inputRow++) {
-        fillLgnFiringsBuffer(ss.input, b.lgnfirings, b.poissonNoise, rgen, inputRow);
+        fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, rgen, inputRow);
 //        fillBuffers(ss.input, b.lgnfirings, rgen, inputRow);
         cg::sync(grid);
         for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
@@ -132,11 +117,30 @@ __global__ void test_kernel(CudaMutableState ms,
             /* Neuron per thread stuff */
             for (int neuron = id; neuron < NBNEUR; neuron += gridDim.x) {
                 float v = ms.v.data[id];
-                float i = b.neuronInputs.data[id];
+                float vprev = v;
+                float vthresh = ms.vthresh.data[id];
+                float input = b.neuronInputs.data[id];
                 float wadap = ms.wadap.data[id];
                 float z = ms.z.data[id];
-                float vthresh = ms.vthresh.data[id];
-                int isspiking = ms.isSpiking.data[id];
+                int isSpiking = ms.isSpiking.data[id];
+
+                v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
+
+                if (isSpiking > 1) {
+                    v = VPEAK-0.001;
+                }
+
+                if (isSpiking == 1) {
+                    v = VRESET;
+                    z = ISP;
+                    vthresh = VTMAX;
+                    wadap += CONSTB;
+                }
+                isSpiking = max(0,isSpiking - 1);
+                v = max(v,MINV);
+                   
+
+                ms.v.data[id] = v;
             }
 
             /* Plasticity */
