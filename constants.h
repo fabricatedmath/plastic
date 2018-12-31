@@ -48,3 +48,15 @@
 #define CONSTB 0.0805
 #define CONSTC 281.0
 #define ISP 400.0
+
+#define NBSPIKINGSTEPS 1
+#define TAUADAP 144.0
+#define TAUZ 40.0
+#define TAUVTHRESH 50.0
+#define TAUVLONGTRACE 20000.0
+#define TAUXPLAST 15.0
+
+#define VREF2 50.0
+
+#define ALTP (8e-5 * 0.008 * 1.0)
+#define ALTPMULT 0.75

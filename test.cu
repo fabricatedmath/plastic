@@ -87,26 +87,6 @@ __global__ void test_kernel(CudaMutableState ms,
 
                 float ilat = LATCONNMULT * VSTIM * computeILATNeuron(sdata, block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
 
-                //this adds 2.75 us per iter out of 8.7 us total
-                // curandState g = rgen.get(id);
-                // float posNoise = rgen.samplePosPoisson(id,&g);
-                // float negNoise = rgen.sampleNegPoisson(id,&g);
-                // rgen.put(id,g);
-
-                //this is 5.95 us total
-                
-                // curandState g = rgen.get(id);
-                // float posNoise = rgen.sampleUniform(id,&g);
-                // float negNoise = rgen.sampleUniform(id,&g);
-                // rgen.put(id,g);
-                
-
-                //this is 3.59 us total
-                //float posNoise = 0;
-                //float negNoise = 0;
-                
-                //b.neuronInputs.data[row] = iff + ilat + posNoise + negNoise;
-                
                 int* noiseRowPtr = getRowPtr(b.poissonNoise, numStepsThisPres);
                 float noise = noiseRowPtr[row];
                 b.neuronInputs.data[row] = iff + ilat + noise;
@@ -123,7 +103,21 @@ __global__ void test_kernel(CudaMutableState ms,
                 float wadap = ms.wadap.data[id];
                 float z = ms.z.data[id];
                 int isSpiking = ms.isSpiking.data[id];
+                int firing = ms.firings.data[id];
+                float vlongtrace = ms.vlongtrace.data[id];
+                float xplastLat = ms.xplastLat.data[id];
+                float xplastFF = ms.xplastFF.data[id];
+                
+                float lgnfirings = 0;
+                if (numStepsThisPres < NBSTEPSSTIM) {
+                    float* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
+                    lgnfirings = rowLgnFirings[id];
+                }
 
+                float vneg = ms.vneg.data[id];
+                float vpos = ms.vpos.data[id];
+
+                /* PRE-SPIKE UPDATE */
                 v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
 
                 if (isSpiking > 1) {
@@ -138,8 +132,32 @@ __global__ void test_kernel(CudaMutableState ms,
                 }
                 isSpiking = max(0,isSpiking - 1);
                 v = max(v,MINV);
-                   
 
+                /* SPIKE UPDATE */
+                firing = 0;
+                if (v > VPEAK) {
+                    firing = 1;
+                    v = VPEAK;
+                    isSpiking = NBSPIKINGSTEPS;
+                }
+
+                /* POST-SPIKE UPDATE */
+                wadap = wadap + (DT / TAUADAP) * (CONSTA * (v - ELEAK) - wadap);
+                z = z + (DT / TAUZ) * (-1.0) * z;
+                vthresh = vthresh + (DT / TAUVTHRESH) * (-1.0 * vthresh + VTREST);
+                vlongtrace = vlongtrace + (DT / TAUVLONGTRACE) * (max(0.0,(vprev - THETAVLONGTRACE)) - vlongtrace);
+
+                xplastLat = xplastLat + firing / TAUXPLAST - (DT / TAUXPLAST) * xplastLat;
+                xplastFF = xplastFF + lgnfirings / TAUXPLAST - (DT / TAUXPLAST) * xplastFF;
+
+                float altds = ss.altds.data[id];
+
+                /* PLASTICITY */
+                
+                b.eachNeurLTD.data[id] = DT * (-altds / VREF2) * vlongtrace * vlongtrace * max(0.0,vneg - THETAVNEG);
+                b.eachNeurLTP.data[id] = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
+
+                
                 ms.v.data[id] = v;
             }
 
