@@ -22,7 +22,7 @@ __device__ float computeIFFNeuron
     const float* rowLgnFirings = getRowPtr(lgnFiringsBuffer, inputRow);
     const float* rowWff = getRowPtr(wff, row);
     #pragma unroll
-    for (int i = tid; i < FFRFSIZE; i+=block.size()) {
+    for (int i = tid; i < FFRFSIZE; i += block.size()) {
         float a = rowLgnFirings[i];
         float m = rowWff[i];
         acc += a*m;
@@ -70,14 +70,17 @@ __device__ float computeILATNeuron
     #pragma unroll
     for (int i = tid; i < NBNEUR; i += block.size()) {
         int incomingSpike = incomingSpikesRow[i];
-        float wVal = wRow[i];
-        int delay = delaysRow[i];
-        int firing = firings.data[i];
         
-        incomingSpike = incomingSpike | (firing << (delay-1));
-        incomingSpikesRow[i] = incomingSpike;
+        if (i != row) {
+            const int delay = delaysRow[i];
+            const int firing = firings.data[i];
+            incomingSpike = incomingSpike | (firing << (delay-1));
+        }
+
+        incomingSpikesRow[i] = incomingSpike >> 1;
 
         if (1 & incomingSpike == 1) {
+            const float wVal = wRow[i];
             acc += wVal;
         }
     }

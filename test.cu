@@ -30,23 +30,40 @@ __global__ void spin_kernel() {
     } while ((clock64() - startTime) < thresh);
 }
 
-__device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, CudaMatrixXi poissonNoise, Rgen rgen, int inputRow) {
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
-    const float* rowPtr = getRowPtr(input, inputRow);
-    curandState g = rgen.get(id);
-    float* lgnfiringsRowPtr;
+__device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, CudaMatrixXi poissonNoise, CudaMatrixXi incomingSpikes, CudaVectorXi firings, Rgen rgen, int inputRow) {
+
     const unsigned int tid = threadIdx.x;
+
+    //Clear incoming spikes
+    for (int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
+        int* incomingSpikesRowPtr = getRowPtr(incomingSpikes, row);
+        for (int i = tid; i < NBNEUR; i += blockDim.x) {
+            incomingSpikesRowPtr[i] = 0;
+        }
+    }
+
+    if (blockIdx.x == 0) {
+        for (int i = tid; i < NBNEUR; i+= blockDim.x) {
+            firings.data[i] = 0;
+        }
+    }
+
+    //Cache lgnfirings (apply random noise to for each stimulus presentation step)
+    const float* rowPtr = getRowPtr(input, inputRow);
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    curandState g = rgen.get(id);
     for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
-        lgnfiringsRowPtr = getRowPtr(lgnfirings, row);
+        float* lgnfiringsRowPtr = getRowPtr(lgnfirings, row);
         for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
             float rand = rgen.sampleUniform(tid,&g);
             lgnfiringsRowPtr[i] = rand < rowPtr[i];
         }
     }
-
-    int* poissonNoiseRowPtr; 
+    
+    //Generate poisson noise
     for (int row = blockIdx.x; row < NBSTEPSPERPRES; row += gridDim.x) {
-        poissonNoiseRowPtr = getRowPtr(poissonNoise, row);
+        int* poissonNoiseRowPtr = getRowPtr(poissonNoise, row);
         for (int i = tid; i < NBNEUR; i += blockDim.x) {
             int rand1 = rgen.samplePosPoisson(tid,&g);
             int rand2 = rgen.sampleNegPoisson(tid,&g);
@@ -57,26 +74,46 @@ __device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, C
 }
 
 __global__ void test_kernel(CudaMutableState ms,
-                            const CudaStaticState ss,
+                            CudaStaticState ss,
                             CudaBuffers b,
                             Rgen rgen,
                             unsigned long long* time) {
-    
     unsigned long long startTime = clock64();
     __shared__ float sdata[numThreads];
     cg::thread_block block = cg::this_thread_block();
     cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(block);
-
     cg::grid_group grid = cg::this_grid();
-
     const unsigned int tid = block.thread_rank();
     
     int id = blockIdx.x * blockDim.x + threadIdx.x;
 
+    float vthresh, vlongtrace, vneg, vpos;
+    float wadap, z, xplastLat, xplastFF;
+    
+    float altds;
+
+    if (id < NBNEUR) {
+        vthresh = ms.vthresh.data[id];
+        vlongtrace = ms.vlongtrace.data[id];
+        vneg = ms.vneg.data[id];
+        vpos = ms.vpos.data[id];
+        
+        wadap = ms.wadap.data[id];
+        z = ms.z.data[id];
+        xplastLat = ms.xplastLat.data[id];
+        xplastFF = ms.xplastFF.data[id];
+        
+        altds = ss.altds.data[id];
+    }
+
     for (int inputRow = 0; inputRow < 100; inputRow++) {
-        fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, rgen, inputRow);
-//        fillBuffers(ss.input, b.lgnfirings, rgen, inputRow);
+        
+        fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, ms.incomingSpikes, ms.firings, rgen, inputRow);
+        
         cg::sync(grid);
+
+        float v = ELEAK;
+        int isSpiking = 0;
         for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
             /* Calculate Inputs with block per Neuron */
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
@@ -95,30 +132,29 @@ __global__ void test_kernel(CudaMutableState ms,
             cg::sync(grid);
 
             /* Neuron per thread stuff */
-            for (int neuron = id; neuron < NBNEUR; neuron += gridDim.x) {
-                float v = ms.v.data[id];
-                float vprev = v;
-                float vthresh = ms.vthresh.data[id];
-                float input = b.neuronInputs.data[id];
-                float wadap = ms.wadap.data[id];
-                float z = ms.z.data[id];
-                int isSpiking = ms.isSpiking.data[id];
-                int firing = ms.firings.data[id];
-                float vlongtrace = ms.vlongtrace.data[id];
-                float xplastLat = ms.xplastLat.data[id];
-                float xplastFF = ms.xplastFF.data[id];
-                
+            if (id < FFRFSIZE) {
                 float lgnfirings = 0;
                 if (numStepsThisPres < NBSTEPSSTIM) {
-                    float* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
+                    const float* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
                     lgnfirings = rowLgnFirings[id];
                 }
-
-                float vneg = ms.vneg.data[id];
-                float vpos = ms.vpos.data[id];
+                xplastFF = xplastFF + lgnfirings / TAUXPLAST - (DT / TAUXPLAST) * xplastFF;
+                ms.xplastFF.data[id] = xplastFF;
+            }
+            
+            if (id < NBNEUR) {
+                { 
+                    const float vprev = v;
+                    vlongtrace = vlongtrace + (DT / TAUVLONGTRACE) * (max(0.0,(vprev - THETAVLONGTRACE)) - vlongtrace);
+                    vneg = vneg + (DT / TAUVNEG) * (vprev - vneg);
+                    vpos = vpos + (DT / TAUVPOS) * (vprev - vpos);
+                }
 
                 /* PRE-SPIKE UPDATE */
-                v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
+                {
+                    const float input = b.neuronInputs.data[id];
+                    v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
+                }
 
                 if (isSpiking > 1) {
                     v = VPEAK-0.001;
@@ -131,37 +167,77 @@ __global__ void test_kernel(CudaMutableState ms,
                     wadap += CONSTB;
                 }
                 isSpiking = max(0,isSpiking - 1);
+
                 v = max(v,MINV);
 
                 /* SPIKE UPDATE */
-                firing = 0;
-                if (v > VPEAK) {
-                    firing = 1;
-                    v = VPEAK;
-                    isSpiking = NBSPIKINGSTEPS;
+                {
+                    int firing = 0;
+                    if (v > VPEAK) {
+                        firing = 1;
+                        v = VPEAK;
+                        isSpiking = NBSPIKINGSTEPS;
+                    }
+                    xplastLat = xplastLat + firing / TAUXPLAST - (DT / TAUXPLAST) * xplastLat;
+                    ms.firings.data[id] = firing;
+                    ms.xplastLat.data[id] = xplastLat;
                 }
 
                 /* POST-SPIKE UPDATE */
                 wadap = wadap + (DT / TAUADAP) * (CONSTA * (v - ELEAK) - wadap);
                 z = z + (DT / TAUZ) * (-1.0) * z;
                 vthresh = vthresh + (DT / TAUVTHRESH) * (-1.0 * vthresh + VTREST);
-                vlongtrace = vlongtrace + (DT / TAUVLONGTRACE) * (max(0.0,(vprev - THETAVLONGTRACE)) - vlongtrace);
-
-                xplastLat = xplastLat + firing / TAUXPLAST - (DT / TAUXPLAST) * xplastLat;
-                xplastFF = xplastFF + lgnfirings / TAUXPLAST - (DT / TAUXPLAST) * xplastFF;
-
-                float altds = ss.altds.data[id];
-
-                /* PLASTICITY */
-                
-                b.eachNeurLTD.data[id] = DT * (-altds / VREF2) * vlongtrace * vlongtrace * max(0.0,vneg - THETAVNEG);
-                b.eachNeurLTP.data[id] = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
-
-                
-                ms.v.data[id] = v;
             }
 
-            /* Plasticity */
+            /* PLASTICITY */
+            if (id < NBE) {
+                b.eachNeurLTD.data[id] = DT * (-altds / VREF2) * vlongtrace * vlongtrace * max(0.0,vneg - THETAVNEG);
+                b.eachNeurLTP.data[id] = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
+            }
+
+            for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
+                const float neurLTP = b.eachNeurLTP.data[row];
+                const float neurLTD = b.eachNeurLTD.data[row];
+                {
+                    const float* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
+                    float* rowWff = getRowPtr(ms.wff, row);
+                
+                    for (int i = tid; i < FFRFSIZE; i += block.size()) {
+                        const float xplastFF = ms.xplastFF.data[i];
+                        float lgnfirings = 0;
+                        if (numStepsThisPres < NBSTEPSSTIM) {
+                            lgnfirings = rowLgnFirings[i];
+                        }
+                        float wff = rowWff[i];
+                        wff = wff + xplastFF * neurLTP;
+                        wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
+                        wff = min(MAXW,max(0.0,wff));
+                        rowWff[i] = wff;
+                    }
+                }
+                {
+                    float* rowW = getRowPtr(ms.w, row);
+                    for (int i = tid; i < NBE; i += block.size()) {
+                        const float xplastLat = ms.xplastLat.data[i];    
+                        const int firing = ms.firings.data[i];
+                        float w = rowW[i];
+                        w = w + xplastLat * neurLTP;
+                        w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
+                        if (row == i) {
+                            w = 0.0;
+                        }
+                        w = (row != i) * w;
+                        if (i < NBE) {
+                            w = max(0.0,w);
+                        } else {
+                            w = min(0.0,w);
+                        }
+                        w = min(MAXW,w);
+                        rowW[i] = w;
+                    }
+                }
+            }
+            
         }
     }
     unsigned long long endTime = clock64();

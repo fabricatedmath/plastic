@@ -3,7 +3,7 @@ CUDA_INSTALL_PATH := /usr/local/cuda
 CXX := g++
 CC := gcc
 LINK := g++ -dc -fPIC
-NVCC := nvcc -rdc=true
+NVCC := nvcc -rdc=true -Xptxas -v
 
 INCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
@@ -29,7 +29,6 @@ main.cpp.o: main.cpp test.h constants.h init.h dataset.h state.h
 	$(CXX) $(CXXFLAGS) -c main.cpp -o main.cpp.o
 
 test.cu.o: test.cu err.cuh cuda_state.cuh state.h test.h randGen.cuh cuda_utility.cuh constants.h input.cuh
-	echo "dogs"
 	$(NVCC) $(NVCCFLAGS) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c test.cu -o test.cu.o
 	nvcc $(GENCODE_FLAGS) -dlink -o test_link.cu.o test.cu.o -lcudart -lcudadevrt
 

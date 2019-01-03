@@ -2,7 +2,7 @@
 
 #define WFFINITMIN 0.0
 #define WFFINITMAX 0.1
-#define MAXW 50
+#define MAXW 50.0
 
 #define NBE 100
 #define NBI 20
@@ -53,6 +53,8 @@
 #define TAUADAP 144.0
 #define TAUZ 40.0
 #define TAUVTHRESH 50.0
+#define TAUVNEG 10.0
+#define TAUVPOS 7.0
 #define TAUVLONGTRACE 20000.0
 #define TAUXPLAST 15.0
 
@@ -60,3 +62,5 @@
 
 #define ALTP (8e-5 * 0.008 * 1.0)
 #define ALTPMULT 0.75
+
+#define WPENSCALE 0.33
