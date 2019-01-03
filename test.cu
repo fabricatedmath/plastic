@@ -100,6 +100,7 @@ __global__ void test_kernel(CudaMutableState ms,
         
         wadap = ms.wadap.data[id];
         z = ms.z.data[id];
+        
         xplastLat = ms.xplastLat.data[id];
         xplastFF = ms.xplastFF.data[id];
         
@@ -195,6 +196,8 @@ __global__ void test_kernel(CudaMutableState ms,
                 b.eachNeurLTP.data[id] = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
             }
 
+            cg::sync(grid);
+
             for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
                 const float neurLTP = b.eachNeurLTP.data[row];
                 const float neurLTD = b.eachNeurLTD.data[row];
@@ -226,10 +229,11 @@ __global__ void test_kernel(CudaMutableState ms,
                         if (row == i) {
                             w = 0.0;
                         }
-                        w = (row != i) * w;
                         if (i < NBE) {
+                            //Excitory Pruning
                             w = max(0.0,w);
                         } else {
+                            // Inhibitory Pruning
                             w = min(0.0,w);
                         }
                         w = min(MAXW,w);
@@ -238,6 +242,7 @@ __global__ void test_kernel(CudaMutableState ms,
                 }
             }
             
+            cg::sync(grid);
         }
     }
     unsigned long long endTime = clock64();
