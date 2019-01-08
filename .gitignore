@@ -1,5 +1,3 @@
-main
-randGen
-*.o
-*.f
-*.d
+bin/*
+obj/*
+dataset/*.f

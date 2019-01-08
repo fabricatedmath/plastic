@@ -1,5 +1,7 @@
 #pragma once
 
+#include "input.cuh"
+
 typedef RandomGen<curandState> Rgen;
 
 __device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, CudaMatrixXi poissonNoise, CudaMatrixXi incomingSpikes, CudaVectorXi firings, Rgen rgen, int inputRow) {
@@ -99,9 +101,11 @@ __global__ void test_kernel(CudaMutableState ms,
 
                 float ilat = LATCONNMULT * VSTIM * computeILATNeuron(sdata, block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
 
-                int* noiseRowPtr = getRowPtr(b.poissonNoise, numStepsThisPres);
-                float noise = noiseRowPtr[row];
-                b.neuronInputs.data[row] = iff + ilat + noise;
+                if (tid == 0) {
+                    int* noiseRowPtr = getRowPtr(b.poissonNoise, numStepsThisPres);
+                    float noise = noiseRowPtr[row];
+                    b.neuronInputs.data[row] = iff + ilat + noise;
+                }
             }
             /* Sync blocks from Input calculation */
             cg::sync(grid);

@@ -28,7 +28,7 @@ private:
 
     static MatrixDataset loadDataset() {
         const int ffrfSize = FFRFSIZE;
-        const string fileName = string("./patchesCenteredScaledBySumTo126ImageNetONOFFRotatedNewInt8.bin.dat");
+        const string fileName = string("./dataset/patchesCenteredScaledBySumTo126ImageNetONOFFRotatedNewInt8.bin.dat");
         ifstream DataFile (fileName, ios::in | ios::binary | ios::ate);
         if (!DataFile.is_open()) {
             throw ios_base::failure("Failed to open the binary data file!");
@@ -74,21 +74,21 @@ private:
     }
 
     static void storeTransformedDataset(MatrixTransformedDataset transformedDataset) {
-        string fileName = string("transformedDataset.").append(typeid(T).name());
+        string fileName = string("dataset/transformedDataset.").append(typeid(T).name());
         std::ofstream ofs(fileName);
         boost::archive::binary_oarchive oa(ofs);
         oa << transformedDataset;
     }
 
     static bool checkForCachedTransformedDataset() {
-        string fileName = string("transformedDataset.").append(typeid(T).name());
+        string fileName = string("dataset/transformedDataset.").append(typeid(T).name());
         ifstream DataFile (fileName, ios::in | ios::binary | ios::ate);
         return DataFile.is_open();
     }
 
     static MatrixTransformedDataset loadTransformedDataset() {
         MatrixTransformedDataset transformedDataset;
-        string fileName = string("transformedDataset.").append(typeid(T).name());
+        string fileName = string("dataset/transformedDataset.").append(typeid(T).name());
         std::ifstream ifs(fileName);
         boost::archive::binary_iarchive ia(ifs);
         ia & transformedDataset;
