@@ -42,7 +42,6 @@ run: $(TARGET)
 
 $(CUDA_DEPS): $(OBJDIR)/%.cu.d : %.cu
 	@mkdir -p $(dir $@)
-	@echo "Building deps: $@"
 	@ set -e; rm -f $@; \
 	$(NVCC) -M -MT $@ $(NVCCFLAGS) $(NVCCINCLUDES) $< > $@.$$$$; \
 	sed 's,\($*\)\.cu.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
