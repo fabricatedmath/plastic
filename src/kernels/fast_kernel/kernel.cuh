@@ -1,5 +1,7 @@
 #pragma once
 
+#include "input.cuh"
+
 #include <cooperative_groups.h>
 namespace cg = cooperative_groups;
 

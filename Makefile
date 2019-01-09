@@ -14,7 +14,7 @@ ALL_CCFLAGS += -dc -Xptxas -dlcm=ca
 
 CXXFLAGS += -std=c++17 $(INCLUDES)
 LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcurand -lboost_serialization -lcudadevrt
-GENCODE_FLAGS := -gencode arch=compute_75,code=sm_75
+GENCODE_FLAGS := -gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75
 
 OBJDIR = obj
 BINDIR = bin
@@ -42,7 +42,7 @@ run: $(TARGET)
 
 $(CUDA_DEPS): $(OBJDIR)/%.cu.d : %.cu
 	@mkdir -p $(dir $@)
-	@ set -e; rm -f $@; \
+	@set -e; rm -f $@; \
 	$(NVCC) -M -MT $@ $(NVCCFLAGS) $(NVCCINCLUDES) $< > $@.$$$$; \
 	sed 's,\($*\)\.cu.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
@@ -52,8 +52,8 @@ $(OBJECTS): $(OBJDIR)/%.o : %.cpp
 
 $(CUDA_OBJECTS): $(OBJDIR)/%.cu.o : %.cu
 	@mkdir -p $(dir $@)
-	@$(NVCC) $(NVCCFLAGS) $(NVCCINCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
-	@nvcc $(GENCODE_FLAGS) -dlink -o $(OBJDIR)/$*_link.cu.o $@ -lcudart -lcudadevrt
+	$(NVCC) $(NVCCFLAGS) $(NVCCINCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
+	$(NVCC) $(GENCODE_FLAGS) -dlink -o $(OBJDIR)/$*_link.cu.o $@ -lcudart -lcudadevrt
 
 $(TARGET): $(OBJECTS) $(CUDA_OBJECTS) Makefile
 	@mkdir -p $(dir $@)

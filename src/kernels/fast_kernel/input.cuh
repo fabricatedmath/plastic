@@ -1,7 +1,11 @@
 #pragma once
 
+#include <cooperative_groups.h>
+namespace cg = cooperative_groups;
+
 __device__ float computeIffNeuron
 (
+    float* sdata,
     const cg::thread_block block,
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
@@ -12,7 +16,7 @@ __device__ float computeIffNeuron
     float acc = 0;
     
     #pragma unroll
-    for (int i = bid; i < FFRFSIZE; i += block.size()) {
+    for (int i = tid; i < FFRFSIZE; i += block.size()) {
         float lgnfiring = slgnfirings[i];
         float wff = swff[i];
         acc += wff * lgnfiring;
@@ -25,7 +29,7 @@ __device__ float computeIffNeuron
         acc += tile32.shfl_down(acc,i);
     }
                 
-    sdata[bid] = acc;
+    sdata[tid] = acc;
   
     cg::sync(block);
   
