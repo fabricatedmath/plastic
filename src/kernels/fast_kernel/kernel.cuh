@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cooperative_groups.h>
-
 namespace cg = cooperative_groups;
 
 typedef RandomGen<curandState> Rgen;
@@ -152,7 +151,6 @@ __global__ void test_kernel(CudaMutableState ms,
                     }
                     iff = acc;
                 }
-
             }
             
             for (int i = bid; i < NBNEUR; i += blockDim.x) {

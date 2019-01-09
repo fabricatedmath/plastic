@@ -78,9 +78,9 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
         usedBeforeAllocation = usedBytes;
         cout << "--------Memory Pre-Allocation-----------------------------------------" << endl;
         cout << endl;
-        printf("\tfree:\t\t%d MB\n", freeBytes / (1024*1024));
-        printf("\tused:\t\t%d MB\n", usedBytes / (1024*1024));
-        printf("\ttotal:\t\t%d MB\n", totalBytes / (1024*1024));
+        printf("\tfree:\t\t%lu MB\n", freeBytes / (1024*1024));
+        printf("\tused:\t\t%lu MB\n", usedBytes / (1024*1024));
+        printf("\ttotal:\t\t%lu MB\n", totalBytes / (1024*1024));
         cout << endl;
         cout << "----------------------------------------------------------------------" << endl;
     }
@@ -118,11 +118,11 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
         allocated = usedAfterAllocation - usedBeforeAllocation;
         cout << "--------Memory Post-Allocation----------------------------------------" << endl;
         cout << endl;
-        printf("\tfree:\t\t%d MB\n", freeBytes / (1024*1024));
-        printf("\tused:\t\t%d MB\n", usedBytes / (1024*1024));
-        printf("\ttotal:\t\t%d MB\n", totalBytes / (1024*1024));
+        printf("\tfree:\t\t%lu MB\n", freeBytes / (1024*1024));
+        printf("\tused:\t\t%lu MB\n", usedBytes / (1024*1024));
+        printf("\ttotal:\t\t%lu MB\n", totalBytes / (1024*1024));
         cout << endl;
-        printf("\tallocated:\t%d MB\n", allocated / (1024*1024));
+        printf("\tallocated:\t%lu MB\n", allocated / (1024*1024));
         cout << endl;
         cout << "----------------------------------------------------------------------" << endl;
     }
