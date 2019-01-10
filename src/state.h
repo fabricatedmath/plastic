@@ -36,7 +36,7 @@ struct StaticState {
 };
 
 struct Buffers {
-    MatrixRXf lgnfirings;
+    MatrixRXi lgnfirings;
     MatrixRXi poissonNoise;
     VectorXf neuronInputs;
 

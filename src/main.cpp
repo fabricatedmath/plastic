@@ -19,7 +19,6 @@ int main(int argc, char* argv[]) {
     RowVectorXi v = RowVectorXi::NullaryExpr(10, poisson );
     std::cout << v << "\n";
 
-
     MutableState mutableState;
     {
         mutableState.w = Init<float,int>::initW();

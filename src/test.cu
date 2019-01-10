@@ -16,7 +16,7 @@ using namespace Eigen;
 namespace cg = cooperative_groups;
 
 const int rows = 50;
-const int numThreadsConstant = 128;
+const int numThreadsConstant = 120;
 
 __global__ void spin_kernel() {
     unsigned long long startTime = clock64();

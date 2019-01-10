@@ -44,21 +44,38 @@
 #define RANDALTD 0.0
 
 #define DELTAT 2.0
+#define INVDELTAT (1 / DELTAT)
 #define CONSTA 4
 #define CONSTB 0.0805
 #define CONSTC 281.0
+#define INVCONSTC (1 / CONSTC)
 #define ISP 400.0
 
 #define NBSPIKINGSTEPS 1
+
 #define TAUADAP 144.0
+#define INVTAUADAP (1 / TAUADAP)
+
 #define TAUZ 40.0
+#define INVTAUZ (1 / TAUZ)
+
 #define TAUVTHRESH 50.0
+#define INVTAUVTHRESH (1 / TAUVTHRESH)
+
 #define TAUVNEG 10.0
+#define INVTAUVNEG (1 / TAUVNEG)
+
 #define TAUVPOS 7.0
+#define INVTAUVPOS (1 / TAUVPOS)
+
 #define TAUVLONGTRACE 20000.0
+#define INVTAUVLONGTRACE (1 / TAUVLONGTRACE)
+
 #define TAUXPLAST 15.0
+#define INVTAUXPLAST (1 / TAUXPLAST)
 
 #define VREF2 50.0
+#define INVVREF2 (1 / VREF2)
 
 #define ALTP (8e-5 * 0.008 * 1.0)
 #define ALTPMULT 0.75

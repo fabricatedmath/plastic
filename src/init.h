@@ -124,7 +124,7 @@ public:
     }
 
     /* Buffers */
-    typedef Matrix<FT,Dynamic,Dynamic,RowMajor> MatrixLgnFiringsBuffer;
+    typedef Matrix<IT,Dynamic,Dynamic,RowMajor> MatrixLgnFiringsBuffer;
     static MatrixLgnFiringsBuffer initLgnFiringsBuffer() {
         return MatrixLgnFiringsBuffer::Zero(NBSTEPSSTIM,FFRFSIZE);
     }

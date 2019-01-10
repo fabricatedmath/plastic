@@ -10,11 +10,12 @@ NVCCINCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
 NVCCFLAGS = -rdc=true -Xptxas -v
 
-ALL_CCFLAGS += -dc -Xptxas -dlcm=ca
+ALL_CCFLAGS += -dc #-Xptxas -dlcm=cg
 
 CXXFLAGS += -std=c++17 $(INCLUDES)
 LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcurand -lboost_serialization -lcudadevrt
-GENCODE_FLAGS := -gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75
+#GENCODE_FLAGS := -gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75
+GENCODE_FLAGS := -gencode arch=compute_75,code=sm_75
 
 OBJDIR = obj
 BINDIR = bin
@@ -40,17 +41,18 @@ run: $(TARGET)
 -include $(DEPS)
 -include $(CUDA_DEPS)
 
+$(DEPS): $(OBJDIR)/%.d : %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -MM -MT $(OBJDIR)/$*.o $< -MF $@
+
 $(CUDA_DEPS): $(OBJDIR)/%.cu.d : %.cu
 	@mkdir -p $(dir $@)
-	@set -e; rm -f $@; \
-	$(NVCC) -M -MT $@ $(NVCCFLAGS) $(NVCCINCLUDES) $< > $@.$$$$; \
-	sed 's,\($*\)\.cu.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$
+	$(NVCC) $(NVCCFLAGS) $(NVCCINCLUDES) -M -MT $(OBJDIR)/$*.cu.o $< > $@
 
-$(OBJECTS): $(OBJDIR)/%.o : %.cpp
-	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@
+$(OBJECTS): $(OBJDIR)/%.o : %.cpp $(OBJDIR)/%.d
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(CUDA_OBJECTS): $(OBJDIR)/%.cu.o : %.cu
+$(CUDA_OBJECTS): $(OBJDIR)/%.cu.o : %.cu $(OBJDIR)/%.cu.d
 	@mkdir -p $(dir $@)
 	$(NVCC) $(NVCCFLAGS) $(NVCCINCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
 	$(NVCC) $(GENCODE_FLAGS) -dlink -o $(OBJDIR)/$*_link.cu.o $@ -lcudart -lcudadevrt

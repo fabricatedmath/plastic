@@ -207,7 +207,7 @@ cudaError_t memcpyDeviceToHost(StaticState* s, CudaStaticState* cs) {
 /* CudaBuffers */
 struct CudaBuffers {
     //TODO make lgnfirings an int matrix
-    CudaMatrixXf lgnfirings;
+    CudaMatrixXi lgnfirings;
     CudaMatrixXi poissonNoise;
     CudaVectorXf neuronInputs;
     CudaVectorXf eachNeurLTD;
