@@ -124,7 +124,7 @@ __global__ void test_kernel(CudaMutableState ms,
             }
             
             cg::sync(grid);
-
+            
             __shared__ float sneurLTD;
             
             if (tid == 0) {
@@ -150,19 +150,19 @@ __global__ void test_kernel(CudaMutableState ms,
                 vthresh = VTMAX;
                 wadap += CONSTB;
             }
+            
             isSpiking = max(0,isSpiking - 1);
             v = max(v,MINV);
-
-            {
-                firing = 0;
-                if (v > VPEAK) {
-                    firing = 1;
-                    v = VPEAK;
-                    isSpiking = NBSPIKINGSTEPS;
-                }
-                xplastLat = xplastLat + firing * INVTAUXPLAST - (DT * INVTAUXPLAST) * xplastLat;
+            
+            firing = 0;
+            if (v > VPEAK) {
+                firing = 1;
+                v = VPEAK;
+                isSpiking = NBSPIKINGSTEPS;
             }
-
+            
+            xplastLat = xplastLat + firing * INVTAUXPLAST - (DT * INVTAUXPLAST) * xplastLat;
+            
             wadap = wadap + (DT * INVTAUADAP) * (CONSTA * (v - ELEAK) - wadap);
             z = z + (DT * INVTAUZ) * (-1.0) * z;
             vthresh = vthresh + (DT * INVTAUVTHRESH) * (-1.0 * vthresh + VTREST);
@@ -171,7 +171,27 @@ __global__ void test_kernel(CudaMutableState ms,
             if (tid == 0) {
                 sneurLTP = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
             }
-            
+
+            if (tid < NBE) {
+                w = w + xplastLat * sneurLTP;
+                w = w + firing * sneurLTD * (1.0 + w * WPENSCALE);
+                if (row == tid) {
+                    w = 0.0;
+                }
+                w = max(0.0,w);
+                w = min(MAXW,w);
+            }
+
+            for (int i = tid; i < FFRFSIZE; i += block.size()) {
+                const float lgnfiring = slgnfirings[tid];
+                float wff = swff[tid];
+                const float xplastFF = sxplastFF[tid];
+                wff = wff + xplastFF * sneurLTP;
+                wff = wff + lgnfiring * sneurLTD * (1.0 + wff * WPENSCALE);
+                wff = min(MAXW, max(0.0,wff));
+                swff[tid] = wff;
+            }
+            cg::sync(grid);
         }
     }
 
