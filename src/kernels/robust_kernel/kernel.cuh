@@ -4,7 +4,7 @@
 
 typedef RandomGen<curandState> Rgen;
 
-__device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, CudaMatrixXi poissonNoise, CudaMatrixXi incomingSpikes, CudaVectorXi firings, Rgen rgen, int inputRow) {
+__device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXi lgnfirings, CudaMatrixXi poissonNoise, CudaMatrixXi incomingSpikes, CudaVectorXi firings, Rgen rgen, int inputRow) {
 
     const unsigned int tid = threadIdx.x;
 
@@ -28,7 +28,7 @@ __device__ void fillBuffers(const CudaMatrixXf input, CudaMatrixXf lgnfirings, C
     
     curandState g = rgen.get(id);
     for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
-        float* lgnfiringsRowPtr = getRowPtr(lgnfirings, row);
+        int* lgnfiringsRowPtr = getRowPtr(lgnfirings, row);
         for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
             float rand = rgen.sampleUniform(tid,&g);
             lgnfiringsRowPtr[i] = rand < rowPtr[i];
@@ -54,14 +54,14 @@ __global__ void test_kernel(CudaMutableState ms,
                             CudaBuffers b,
                             Rgen rgen,
                             unsigned long long* time) {
-    unsigned long long startTime = clock64();
+    const unsigned long long startTime = clock64();
     __shared__ float sdata[numThreads];
     cg::thread_block block = cg::this_thread_block();
     cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(block);
     cg::grid_group grid = cg::this_grid();
     const unsigned int tid = block.thread_rank();
     
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
 
     float vthresh, vlongtrace, vneg, vpos;
     float wadap, z, xplastLat, xplastFF;
@@ -102,8 +102,8 @@ __global__ void test_kernel(CudaMutableState ms,
                 float ilat = LATCONNMULT * VSTIM * computeILATNeuron(sdata, block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
 
                 if (tid == 0) {
-                    int* noiseRowPtr = getRowPtr(b.poissonNoise, numStepsThisPres);
-                    float noise = noiseRowPtr[row];
+                    const int* noiseRowPtr = getRowPtr(b.poissonNoise, numStepsThisPres);
+                    const float noise = noiseRowPtr[row];
                     b.neuronInputs.data[row] = iff + ilat + noise;
                 }
             }
@@ -114,7 +114,7 @@ __global__ void test_kernel(CudaMutableState ms,
             if (id < FFRFSIZE) {
                 float lgnfirings = 0;
                 if (numStepsThisPres < NBSTEPSSTIM) {
-                    const float* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
+                    const int* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
                     lgnfirings = rowLgnFirings[id];
                 }
                 xplastFF = xplastFF + lgnfirings / TAUXPLAST - (DT / TAUXPLAST) * xplastFF;
@@ -181,12 +181,12 @@ __global__ void test_kernel(CudaMutableState ms,
                 const float neurLTP = b.eachNeurLTP.data[row];
                 const float neurLTD = b.eachNeurLTD.data[row];
                 {
-                    const float* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
+                    const int* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
                     float* rowWff = getRowPtr(ms.wff, row);
                 
                     for (int i = tid; i < FFRFSIZE; i += block.size()) {
                         const float xplastFF = ms.xplastFF.data[i];
-                        float lgnfirings = 0;
+                        int lgnfirings = 0;
                         if (numStepsThisPres < NBSTEPSSTIM) {
                             lgnfirings = rowLgnFirings[i];
                         }

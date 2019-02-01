@@ -12,19 +12,19 @@ __device__ float computeIFFNeuron
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
     const CudaMatrixXf wff,
-    const CudaMatrixXf lgnFiringsBuffer,
+    const CudaMatrixXi lgnFiringsBuffer,
     const int inputRow,
     const int row
 )
 {
     float acc = 0;
 
-    const float* rowLgnFirings = getRowPtr(lgnFiringsBuffer, inputRow);
+    const int* rowLgnFirings = getRowPtr(lgnFiringsBuffer, inputRow);
     const float* rowWff = getRowPtr(wff, row);
     #pragma unroll
     for (int i = tid; i < FFRFSIZE; i += block.size()) {
-        float a = rowLgnFirings[i];
-        float m = rowWff[i];
+        const int a = rowLgnFirings[i];
+        const float m = rowWff[i];
         acc += a*m;
     }
 

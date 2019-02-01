@@ -8,7 +8,7 @@ NVCC := nvcc
 INCLUDES = -Ieigen-git-mirror/ -Iinclude/
 NVCCINCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
-NVCCFLAGS = -rdc=true -Xptxas -v
+NVCCFLAGS = -lineinfo -rdc=true -Xptxas -v
 
 ALL_CCFLAGS += -dc #-Xptxas -dlcm=cg
 
@@ -55,7 +55,7 @@ $(OBJECTS): $(OBJDIR)/%.o : %.cpp $(OBJDIR)/%.d
 $(CUDA_OBJECTS): $(OBJDIR)/%.cu.o : %.cu $(OBJDIR)/%.cu.d
 	@mkdir -p $(dir $@)
 	$(NVCC) $(NVCCFLAGS) $(NVCCINCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
-	$(NVCC) $(GENCODE_FLAGS) -dlink -o $(OBJDIR)/$*_link.cu.o $@ -lcudart -lcudadevrt
+	$(NVCC) -dlink -o $(OBJDIR)/$*_link.cu.o $@ -lcudart -lcudadevrt
 
 $(TARGET): $(OBJECTS) $(CUDA_OBJECTS) Makefile
 	@mkdir -p $(dir $@)

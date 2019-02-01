@@ -12,13 +12,6 @@ using namespace Eigen;
 
 int main(int argc, char* argv[]) {
 
-    std::default_random_engine generator;
-    std::poisson_distribution<int> distribution(4.1);
-    auto poisson = [&] (int) {return distribution(generator);};
-
-    RowVectorXi v = RowVectorXi::NullaryExpr(10, poisson );
-    std::cout << v << "\n";
-
     MutableState mutableState;
     {
         mutableState.w = Init<float,int>::initW();
@@ -57,10 +50,7 @@ int main(int argc, char* argv[]) {
 
         buffers.eachNeurLTD = Init<float,int>::initEachNeurLTD();
         buffers.eachNeurLTP = Init<float,int>::initEachNeurLTP();
-
     }
-
-    cout << staticState.input.row(0).head(10) << endl;
 
     wrapper(mutableState, staticState, buffers);
 }
