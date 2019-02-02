@@ -60,6 +60,8 @@ __global__ void test_kernel(CudaMutableState ms,
     cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(block);
     cg::grid_group grid = cg::this_grid();
     const unsigned int tid = block.thread_rank();
+
+    const int ffrfBlockOffset = NBNEUR / NUMTHREADS + 1;
     
     const int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -111,17 +113,18 @@ __global__ void test_kernel(CudaMutableState ms,
             cg::sync(grid);
 
             /* Neuron per thread stuff */
-            if (id < FFRFSIZE) {
+            const int fid = threadIdx.x + blockDim.x * (blockIdx.x - ffrfBlockOffset);
+            if (fid >= 0 && fid < FFRFSIZE) {
                 float lgnfirings = 0;
                 if (numStepsThisPres < NBSTEPSSTIM) {
                     const int* rowLgnFirings = getRowPtr(b.lgnfirings, numStepsThisPres);
-                    lgnfirings = rowLgnFirings[id];
+                    lgnfirings = rowLgnFirings[fid];
                 }
                 xplastFF = xplastFF + lgnfirings / TAUXPLAST - (DT / TAUXPLAST) * xplastFF;
-                ms.xplastFF.data[id] = xplastFF;
+                ms.xplastFF.data[fid] = xplastFF;
             }
-            
-            
+
+            const int nid = threadIdx.x + blockDim.x * blockIdx.x;
             if (id < NBNEUR) {
                 { 
                     const float vprev = v;

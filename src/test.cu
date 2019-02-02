@@ -17,7 +17,7 @@ using namespace std;
 using namespace Eigen;
 namespace cg = cooperative_groups;
 
-const int numThreadsConstant = 128;
+const int numThreadsConstant = NUMTHREADS;
 
 void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers) {
     int numThreads = numThreadsConstant;

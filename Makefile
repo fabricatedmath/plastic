@@ -8,7 +8,7 @@ NVCC := nvcc
 INCLUDES = -Ieigen-git-mirror/ -Iinclude/
 NVCCINCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
-NVCCFLAGS = -lineinfo -rdc=true -Xptxas -v
+NVCCFLAGS = -lineinfo -rdc=true -Xptxas -v --expt-relaxed-constexpr
 
 ALL_CCFLAGS += -dc #-Xptxas -dlcm=cg
 

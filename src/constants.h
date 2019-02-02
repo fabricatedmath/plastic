@@ -4,10 +4,15 @@
 #define WFFINITMAX 0.1
 #define MAXW 50.0
 
-#define NBE 100
-#define NBI 20
+//#define NBE 100
+//#define NBI 20
+
+#define NBE 400
+#define NBI 80
 
 #define NBNEUR (NBE + NBI)
+
+#define NUMTHREADS 128
 
 #define PATCHSIZE 17
 #define FFRFSIZE (2 * PATCHSIZE * PATCHSIZE)
