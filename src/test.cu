@@ -19,26 +19,31 @@ namespace cg = cooperative_groups;
 
 const int numThreadsConstant = NUMTHREADS;
 
-void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers) {
+template<typename F, typename I>
+void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers) {
     int numThreads = numThreadsConstant;
 
-    auto func = test_kernel<numThreadsConstant>;
+    typedef RandomGen<F,curandState> Rgen;
+    auto func = test_kernel<F,I,Rgen,numThreadsConstant>;
     
-    int numBlocks = printSetBlockGridStats(func, numThreadsConstant);
+    //int numBlocks = printSetBlockGridStats(func, numThreadsConstant);
+    int numBlocks = 120;
+
+    Rgen cudaRgen(numBlocks, numThreads, 1.1, 1.8);
 
     unsigned long long time;
     unsigned long long* d_time;
     gpuErrchk( cudaMalloc(&d_time, sizeof(unsigned long long)) );
     
-    CudaMutableState cudaMutableState;
+    CudaMutableState<F,I> cudaMutableState;
     gpuErrchk( cudaMalloc(&mutableState,&cudaMutableState) );
     gpuErrchk( memcpyHostToDevice(&mutableState,&cudaMutableState) );
 
-    CudaStaticState cudaStaticState;
+    CudaStaticState<F,I> cudaStaticState;
     gpuErrchk( cudaMalloc(&staticState,&cudaStaticState) );
     gpuErrchk( memcpyHostToDevice(&staticState,&cudaStaticState) );
 
-    CudaBuffers cudaBuffers;
+    CudaBuffers<F,I> cudaBuffers;
     gpuErrchk( cudaMalloc(&buffers,&cudaBuffers) );
     gpuErrchk( memcpyHostToDevice(&buffers,&cudaBuffers) );
 
@@ -46,9 +51,6 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
 
     numBlocks = min(NBNEUR,numBlocks);
     cout << "Num Blocks: " << numBlocks << endl;
-    
-    typedef RandomGen<curandState> Rgen;
-    Rgen cudaRgen(numBlocks, numThreads, 1.1, 1.8);
 
     void *kernelArgs[] = {
         (void*)&cudaMutableState,
@@ -74,4 +76,11 @@ void wrapper(MutableState mutableState, StaticState staticState, Buffers buffers
     }
 }
 
+template void
+wrapper<float,int>(MutableState<float,int> mutableState, StaticState<float,int> staticState, Buffers<float,int> buffers);
 
+template void
+wrapper<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers);
+
+//template void
+//wrapper<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers);

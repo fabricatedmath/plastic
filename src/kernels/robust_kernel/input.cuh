@@ -5,26 +5,28 @@
 namespace cg = cooperative_groups;
 
 //Use Kahan Summation?
-__device__ float computeIFFNeuron
+
+template<typename F, typename I>
+__device__ F computeIFFNeuron
 (
-    float* sdata,
+    F* sdata,
     const cg::thread_block block,
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
-    const CudaMatrixXf wff,
-    const CudaMatrixXi lgnFiringsBuffer,
+    CudaMatrixX<F> wff,
+    CudaMatrixX<I> lgnFiringsBuffer,
     const int inputRow,
     const int row
 )
 {
-    float acc = 0;
+    F acc = 0;
 
-    const int* rowLgnFirings = getRowPtr(lgnFiringsBuffer, inputRow);
-    const float* rowWff = getRowPtr(wff, row);
+    const I* rowLgnFirings = lgnFiringsBuffer.getRowPtr(inputRow);
+    const F* rowWff = wff.getRowPtr(row);
     #pragma unroll
     for (int i = tid; i < FFRFSIZE; i += block.size()) {
-        const int a = rowLgnFirings[i];
-        const float m = rowWff[i];
+        const I a = rowLgnFirings[i];
+        const F m = rowWff[i];
         acc += a*m;
     }
 
@@ -48,39 +50,40 @@ __device__ float computeIFFNeuron
     return acc;
 }
 
-__device__ float computeILATNeuron
+template<typename F, typename I>
+__device__ F computeILATNeuron
 (
-    float* sdata,
+    F* sdata,
     const cg::thread_block block,
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
-    const CudaMatrixXf w,
-    const CudaMatrixXi incomingSpikes,
-    const CudaVectorXi firings,
-    const CudaMatrixXi delays,
+    CudaMatrixX<F> w,
+    CudaMatrixX<I> incomingSpikes,
+    CudaVectorX<I> firings,
+    CudaMatrixX<I> delays,
     const int row
 )
 {
-    int* incomingSpikesRow = getRowPtr(incomingSpikes, row);
-    const int* delaysRow = getRowPtr(delays, row);
-    const float* wRow = getRowPtr(w, row);
+    I* incomingSpikesRow = incomingSpikes.getRowPtr(row);
+    const I* delaysRow = delays.getRowPtr(row);
+    const F* wRow = w.getRowPtr(row);
 
-    float acc = 0;
+    F acc = 0;
 
     #pragma unroll
     for (int i = tid; i < NBNEUR; i += block.size()) {
-        int incomingSpike = incomingSpikesRow[i];
+        I incomingSpike = incomingSpikesRow[i];
         
         if (i != row) {
-            const int delay = delaysRow[i];
-            const int firing = firings.data[i];
+            const I delay = delaysRow[i];
+            const I firing = firings.data[i];
             incomingSpike = incomingSpike | (firing << (delay-1));
         }
 
         incomingSpikesRow[i] = incomingSpike >> 1;
 
         if (1 & incomingSpike == 1) {
-            const float wVal = wRow[i];
+            const F wVal = wRow[i];
             acc += wVal;
         }
     }
@@ -102,5 +105,5 @@ __device__ float computeILATNeuron
             acc += sdata[i];
         }
     }
-    return acc;   
+    return acc;
 }

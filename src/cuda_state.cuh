@@ -5,108 +5,76 @@
 
 using namespace Eigen;
 
-/* CudaVectorXf */
-struct CudaVectorXf {
-    float* data;
+template<typename T>
+struct CudaVectorX {
+    T* data;
 };
 
-cudaError_t cudaMalloc(VectorXf* v, CudaVectorXf* cv) {
-    return cudaMalloc((void**)&cv->data, v->size() * sizeof(float));
+template<typename T>
+cudaError_t cudaMalloc(VectorX<T>* v, CudaVectorX<T>* cv) {
+    return cudaMalloc((void**)&cv->data, v->size() * sizeof(T));
 }
 
-cudaError_t memcpyHostToDevice(VectorXf* v, CudaVectorXf* cv) {
-    return cudaMemcpy((void**)cv->data, v->data(), v->size() * sizeof(float), cudaMemcpyHostToDevice);
+template<typename T>
+cudaError_t memcpyHostToDevice(VectorX<T>* v, CudaVectorX<T>* cv) {
+    return cudaMemcpy((void**)cv->data, v->data(), v->size() * sizeof(T), cudaMemcpyHostToDevice);
 }
 
-cudaError_t memcpyDeviceToHost(VectorXf* v, CudaVectorXf* cv) {
-    return cudaMemcpy((void**)v->data(), cv->data, v->size() * sizeof(float), cudaMemcpyDeviceToHost);
+template<typename T>
+cudaError_t memcpyDeviceToHost(VectorX<T>* v, CudaVectorX<T>* cv) {
+    return cudaMemcpy((void**)v->data(), cv->data, v->size() * sizeof(T), cudaMemcpyDeviceToHost);
 }
 
-/* CudaVectorXi */
-struct CudaVectorXi {
-    int* data;
-};
-
-cudaError_t cudaMalloc(VectorXi* v, CudaVectorXi* cv) {
-    return cudaMalloc((void**)&cv->data, v->size() * sizeof(int));
-}
-
-cudaError_t memcpyHostToDevice(VectorXi* v, CudaVectorXi* cv) {
-    return cudaMemcpy((void**)cv->data, v->data(), v->size() * sizeof(int), cudaMemcpyHostToDevice);
-}
-
-cudaError_t memcpyDeviceToHost(VectorXi* v, CudaVectorXi* cv) {
-    return cudaMemcpy((void**)v->data(), cv->data, v->size() * sizeof(int), cudaMemcpyDeviceToHost);
-}
-
-/* CudaMatrixXf */
-struct CudaMatrixXf {
-    float* data;
+template<typename T>
+struct CudaMatrixX {
+    T* data;
     size_t pitch;
+
+    __device__ T* getRowPtr(int row) {
+        return (T*)((char*)data + row*pitch);
+    }    
 };
 
-__device__ float* getRowPtr(CudaMatrixXf cm, int row) {
-    return (float*)((char*)cm.data + row*cm.pitch);
+template<typename T>
+cudaError_t cudaMalloc(MatrixRX<T>* m, CudaMatrixX<T>* cm) {
+   return cudaMallocPitch((void**)&cm->data, &cm->pitch, m->cols() * sizeof(T), m->rows());
 }
 
-cudaError_t cudaMalloc(MatrixRXf* m, CudaMatrixXf* cm) {
-   return cudaMallocPitch((void**)&cm->data, &cm->pitch, m->cols() * sizeof(float), m->rows());
+template<typename T>
+cudaError_t memcpyHostToDevice(MatrixRX<T>* m, CudaMatrixX<T>* cm) {
+    return cudaMemcpy2D(cm->data, cm->pitch, m->data(), m->cols() * sizeof(T), m->cols() * sizeof(T), m->rows(), cudaMemcpyHostToDevice);
 }
 
-cudaError_t memcpyHostToDevice(MatrixRXf* m, CudaMatrixXf* cm) {
-    return cudaMemcpy2D(cm->data, cm->pitch, m->data(), m->cols() * sizeof(float), m->cols() * sizeof(float), m->rows(), cudaMemcpyHostToDevice);
+template<typename T>
+cudaError_t memcpyDeviceToHost(MatrixRX<T>* m, CudaMatrixX<T>* cm) {
+    return cudaMemcpy2D(m->data(), m->cols() * sizeof(T), cm->data, cm->pitch, m->cols() * sizeof(T), m->rows(), cudaMemcpyDeviceToHost);
 }
 
-cudaError_t memcpyDeviceToHost(MatrixRXf* m, CudaMatrixXf* cm) {
-    return cudaMemcpy2D(m->data(), m->cols() * sizeof(float), cm->data, cm->pitch, m->cols() * sizeof(float), m->rows(), cudaMemcpyDeviceToHost);
-}
-
-/* CudaMatrixXi */
-struct CudaMatrixXi {
-    int* data;
-    size_t pitch;
-};
-
-__device__ int* getRowPtr(CudaMatrixXi cm, int row) {
-    return (int*)((char*)cm.data + row*cm.pitch);
-}
-
-cudaError_t cudaMalloc(MatrixRXi* m, CudaMatrixXi* cm) {
-   return cudaMallocPitch((void**)&cm->data, &cm->pitch, m->cols() * sizeof(int), m->rows());
-}
-
-cudaError_t memcpyHostToDevice(MatrixRXi* m, CudaMatrixXi* cm) {
-    return cudaMemcpy2D(cm->data, cm->pitch, m->data(), m->cols() * sizeof(int), m->cols() * sizeof(int), m->rows(), cudaMemcpyHostToDevice);
-}
-
-cudaError_t memcpyDeviceToHost(MatrixRXi* m, CudaMatrixXi* cm) {
-    return cudaMemcpy2D(m->data(), m->cols() * sizeof(int), cm->data, cm->pitch, m->cols() * sizeof(int), m->rows(), cudaMemcpyDeviceToHost);
-}
-
-/* CudaMutableState */
+template<typename F, typename I>
 struct CudaMutableState {
-    CudaMatrixXf w;
-    CudaMatrixXf wff;
-    CudaMatrixXi incomingSpikes;
-    CudaVectorXi firings;
+    CudaMatrixX<F> w;
+    CudaMatrixX<F> wff;
+    CudaMatrixX<I> incomingSpikes;
+    CudaVectorX<I> firings;
 
-    CudaVectorXf v;
-    CudaVectorXf vprev;
-    CudaVectorXf vthresh;
-    CudaVectorXf vlongtrace;
-    CudaVectorXf vpos;
-    CudaVectorXf vneg;
+    CudaVectorX<F> v;
+    CudaVectorX<F> vprev;
+    CudaVectorX<F> vthresh;
+    CudaVectorX<F> vlongtrace;
+    CudaVectorX<F> vpos;
+    CudaVectorX<F> vneg;
 
-    CudaVectorXf xplastLat;
-    CudaVectorXf xplastFF;
+    CudaVectorX<F> xplastLat;
+    CudaVectorX<F> xplastFF;
 
-    CudaVectorXf wadap;
-    CudaVectorXf z;
+    CudaVectorX<F> wadap;
+    CudaVectorX<F> z;
 
-    CudaVectorXi isSpiking;
+    CudaVectorX<I> isSpiking;
 };
 
-cudaError_t cudaMalloc(MutableState* s, CudaMutableState* cs) {
+template<typename F, typename I>
+cudaError_t cudaMalloc(MutableState<F,I>* s, CudaMutableState<F,I>* cs) {
     errRet( cudaMalloc(&s->w,&cs->w) );
     errRet( cudaMalloc(&s->wff,&cs->wff) );
     errRet( cudaMalloc(&s->incomingSpikes,&cs->incomingSpikes) );
@@ -130,7 +98,8 @@ cudaError_t cudaMalloc(MutableState* s, CudaMutableState* cs) {
     return cudaSuccess;
 }
 
-cudaError_t memcpyHostToDevice(MutableState* s, CudaMutableState* cs) {
+template<typename F, typename I>
+cudaError_t memcpyHostToDevice(MutableState<F,I>* s, CudaMutableState<F,I>* cs) {
     errRet( memcpyHostToDevice(&s->w,&cs->w) );
     errRet( memcpyHostToDevice(&s->wff,&cs->wff) );
     errRet( memcpyHostToDevice(&s->incomingSpikes,&cs->incomingSpikes) );
@@ -153,7 +122,8 @@ cudaError_t memcpyHostToDevice(MutableState* s, CudaMutableState* cs) {
     return cudaSuccess;
 }
 
-cudaError_t memcpyDeviceToHost(MutableState* s, CudaMutableState* cs) {
+template<typename F, typename I>
+cudaError_t memcpyDeviceToHost(MutableState<F,I>* s, CudaMutableState<F,I>* cs) {
     errRet( memcpyDeviceToHost(&s->w,&cs->w) );
     errRet( memcpyDeviceToHost(&s->wff,&cs->wff) );
     errRet( memcpyDeviceToHost(&s->incomingSpikes,&cs->incomingSpikes) );
@@ -176,45 +146,48 @@ cudaError_t memcpyDeviceToHost(MutableState* s, CudaMutableState* cs) {
     return cudaSuccess;
 }
 
-/* CudaStaticState */
+template<typename F, typename I>
 struct CudaStaticState {
-    CudaMatrixXf input;
-    CudaMatrixXi delays;
-    CudaVectorXf altds;
+    CudaMatrixX<F> input;
+    CudaMatrixX<I> delays;
+    CudaVectorX<F> altds;
 };
 
-cudaError_t cudaMalloc(StaticState* s, CudaStaticState* cs) {
+template<typename F, typename I>
+cudaError_t cudaMalloc(StaticState<F,I>* s, CudaStaticState<F,I>* cs) {
     errRet( cudaMalloc(&s->input,&cs->input) );
     errRet( cudaMalloc(&s->delays,&cs->delays) );
     errRet( cudaMalloc(&s->altds,&cs->altds) );
     return cudaSuccess;
 }
 
-cudaError_t memcpyHostToDevice(StaticState* s, CudaStaticState* cs) {
+template<typename F, typename I>
+cudaError_t memcpyHostToDevice(StaticState<F,I>* s, CudaStaticState<F,I>* cs) {
     errRet( memcpyHostToDevice(&s->input,&cs->input) );
     errRet( memcpyHostToDevice(&s->delays,&cs->delays) );
     errRet( memcpyHostToDevice(&s->altds,&cs->altds) );
     return cudaSuccess;
 }
 
-cudaError_t memcpyDeviceToHost(StaticState* s, CudaStaticState* cs) {
+template<typename F, typename I>
+cudaError_t memcpyDeviceToHost(StaticState<F,I>* s, CudaStaticState<F,I>* cs) {
     errRet( memcpyDeviceToHost(&s->input,&cs->input) );
     errRet( memcpyDeviceToHost(&s->delays,&cs->delays) );
     errRet( memcpyDeviceToHost(&s->altds,&cs->altds) );
     return cudaSuccess;
 }
 
-/* CudaBuffers */
+template<typename F, typename I>
 struct CudaBuffers {
-    //TODO make lgnfirings an int matrix
-    CudaMatrixXi lgnfirings;
-    CudaMatrixXi poissonNoise;
-    CudaVectorXf neuronInputs;
-    CudaVectorXf eachNeurLTD;
-    CudaVectorXf eachNeurLTP;
+    CudaMatrixX<I> lgnfirings;
+    CudaMatrixX<I> poissonNoise;
+    CudaVectorX<F> neuronInputs;
+    CudaVectorX<F> eachNeurLTD;
+    CudaVectorX<F> eachNeurLTP;
 };
 
-cudaError_t cudaMalloc(Buffers* s, CudaBuffers* cs) {
+template<typename F, typename I>
+cudaError_t cudaMalloc(Buffers<F,I>* s, CudaBuffers<F,I>* cs) {
     errRet( cudaMalloc(&s->lgnfirings,&cs->lgnfirings) );
     errRet( cudaMalloc(&s->poissonNoise,&cs->poissonNoise) );
     errRet( cudaMalloc(&s->neuronInputs,&cs->neuronInputs) );
@@ -223,7 +196,8 @@ cudaError_t cudaMalloc(Buffers* s, CudaBuffers* cs) {
     return cudaSuccess;
 }
 
-cudaError_t memcpyHostToDevice(Buffers* s, CudaBuffers* cs) {
+template<typename F, typename I>
+cudaError_t memcpyHostToDevice(Buffers<F,I>* s, CudaBuffers<F,I>* cs) {
     errRet( memcpyHostToDevice(&s->lgnfirings,&cs->lgnfirings) );
     errRet( memcpyHostToDevice(&s->poissonNoise,&cs->poissonNoise) );
     errRet( memcpyHostToDevice(&s->neuronInputs,&cs->neuronInputs) );
@@ -232,7 +206,8 @@ cudaError_t memcpyHostToDevice(Buffers* s, CudaBuffers* cs) {
     return cudaSuccess;
 }
 
-cudaError_t memcpyDeviceToHost(Buffers* s, CudaBuffers* cs) {
+template<typename F, typename I>
+cudaError_t memcpyDeviceToHost(Buffers<F,I>* s, CudaBuffers<F,I>* cs) {
     errRet( memcpyDeviceToHost(&s->lgnfirings,&cs->lgnfirings) );
     errRet( memcpyDeviceToHost(&s->poissonNoise,&cs->poissonNoise) );
     errRet( memcpyDeviceToHost(&s->neuronInputs,&cs->neuronInputs) );

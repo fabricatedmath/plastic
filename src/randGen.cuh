@@ -7,14 +7,15 @@
 
 using namespace std;
 
+template<typename F>
 struct RandomGenHistorical {
-    float* arrUniform;
-    float* arrPosPoisson;
-    float* arrNegPoisson;
+    F* arrUniform;
+    F* arrPosPoisson;
+    F* arrNegPoisson;
     __device__ void* get(int id) { return NULL; }
-    __device__ float sampleUniform(int idx, void* empty) { return arrUniform[idx]; }
-    __device__ float samplePosPoisson(int idx, void* empty) { return arrPosPoisson[idx]; }
-    __device__ float sampleNegPoisson(int idx, void* empty) { return arrNegPoisson[idx]; }
+    __device__ F sampleUniform(int idx, void* empty) { return arrUniform[idx]; }
+    __device__ F samplePosPoisson(int idx, void* empty) { return arrPosPoisson[idx]; }
+    __device__ F sampleNegPoisson(int idx, void* empty) { return arrNegPoisson[idx]; }
     __device__ void put(int id, void* empty) {}
 };
 
@@ -25,7 +26,18 @@ __global__ void setup_kernel(G *state)
     curand_init(1234, id, 0, &state[id]);
 }
 
+template<typename F, typename G>
+__device__ F curand_uniform_internal(G* localState) {
+    return curand_uniform(localState);
+}
+
 template <typename G>
+__device__ double curand_uniform_internal<double,G>(G* localState) {
+    printf("doggers\n");
+    return curand_uniform_double(localState);
+}
+
+template <typename F, typename G>
 struct RandomGen {
     G *states;
     curandDiscreteDistribution_t posPoisson;
@@ -43,16 +55,17 @@ struct RandomGen {
     __device__ G get(int id) {
         return states[id];
     }
-    __device__ float sampleUniform(int idx, G* localState) {
-        return curand_uniform(localState);
+    __device__ F sampleUniform(int idx, G* localState) {
+        return curand_uniform_internal<F,G>(localState);
     }
-    __device__ float samplePosPoisson(int idx, G* localState) {
+    __device__ unsigned int samplePosPoisson(int idx, G* localState) {
         return curand_discrete(localState, posPoisson);
     }
-    __device__ float sampleNegPoisson(int idx, G* localState) {
+    __device__ unsigned int sampleNegPoisson(int idx, G* localState) {
         return curand_discrete(localState, negPoisson);
     }
     __device__ void put(int id, G localState) {
         states[id] = localState;
     }
 };
+

@@ -7,39 +7,48 @@ using namespace Eigen;
 typedef Matrix<float, Dynamic, Dynamic, RowMajor> MatrixRXf;
 typedef Matrix<int, Dynamic, Dynamic, RowMajor> MatrixRXi;
 
+template<typename T>
+using MatrixRX = Matrix<T, Dynamic, Dynamic, RowMajor>;
+
+template<typename T>
+using VectorX = Matrix<T, Dynamic, 1>;
+
+template<typename F, typename I>
 struct MutableState {
-    MatrixRXf w;
-    MatrixRXf wff;
-    MatrixRXi incomingSpikes;
-    VectorXi firings;
+    MatrixRX<F> w;
+    MatrixRX<F> wff;
+    MatrixRX<I> incomingSpikes;
+    VectorX<I> firings;
 
-    VectorXf v;
-    VectorXf vprev;
-    VectorXf vthresh;
-    VectorXf vlongtrace;
-    VectorXf vpos;
-    VectorXf vneg;
+    VectorX<F> v;
+    VectorX<F> vprev;
+    VectorX<F> vthresh;
+    VectorX<F> vlongtrace;
+    VectorX<F> vpos;
+    VectorX<F> vneg;
 
-    VectorXf xplastLat;
-    VectorXf xplastFF;
+    VectorX<F> xplastLat;
+    VectorX<F> xplastFF;
 
-    VectorXf wadap;
-    VectorXf z;
+    VectorX<F> wadap;
+    VectorX<F> z;
 
-    VectorXi isSpiking;
+    VectorX<I> isSpiking;
 };
 
+template<typename F, typename I>
 struct StaticState {
-    MatrixRXf input;
-    MatrixRXi delays;
-    VectorXf altds;
+    MatrixRX<F> input;
+    MatrixRX<I> delays;
+    VectorX<F> altds;
 };
 
+template<typename F, typename I>
 struct Buffers {
-    MatrixRXi lgnfirings;
-    MatrixRXi poissonNoise;
-    VectorXf neuronInputs;
+    MatrixRX<I> lgnfirings;
+    MatrixRX<I> poissonNoise;
+    VectorX<F> neuronInputs;
 
-    VectorXf eachNeurLTD;
-    VectorXf eachNeurLTP;
+    VectorX<F> eachNeurLTD;
+    VectorX<F> eachNeurLTP;
 };

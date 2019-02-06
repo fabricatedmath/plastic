@@ -10,47 +10,51 @@
 using namespace std;
 using namespace Eigen;
 
-int main(int argc, char* argv[]) {
-
-    MutableState mutableState;
+template<typename F, typename I>
+void run() {
+    MutableState<F,I> mutableState;
     {
-        mutableState.w = Init<float,int>::initW();
-        mutableState.wff = Init<float,int>::initWff();
-        mutableState.incomingSpikes = Init<float,int>::initIncomingSpikes();
-        mutableState.firings = Init<float,int>::initFirings();
+        mutableState.w = Init<F,I>::initW();
+        mutableState.wff = Init<F,I>::initWff();
+        mutableState.incomingSpikes = Init<F,I>::initIncomingSpikes();
+        mutableState.firings = Init<F,I>::initFirings();
 
-        mutableState.v = Init<float,int>::initV();
-        mutableState.vprev = Init<float,int>::initVPrev();
-        mutableState.vthresh = Init<float,int>::initVThresh();
-        mutableState.vlongtrace = Init<float,int>::initVLongtrace();
-        mutableState.vpos = Init<float,int>::initVPos();
-        mutableState.vneg = Init<float,int>::initVNeg();
+        mutableState.v = Init<F,I>::initV();
+        mutableState.vprev = Init<F,I>::initVPrev();
+        mutableState.vthresh = Init<F,I>::initVThresh();
+        mutableState.vlongtrace = Init<F,I>::initVLongtrace();
+        mutableState.vpos = Init<F,I>::initVPos();
+        mutableState.vneg = Init<F,I>::initVNeg();
 
-        mutableState.xplastLat = Init<float,int>::initXPlastLat();
-        mutableState.xplastFF = Init<float,int>::initXPlastFF();
+        mutableState.xplastLat = Init<F,I>::initXPlastLat();
+        mutableState.xplastFF = Init<F,I>::initXPlastFF();
 
-        mutableState.wadap = Init<float,int>::initWadap();
-        mutableState.z = Init<float,int>::initZ();
+        mutableState.wadap = Init<F,I>::initWadap();
+        mutableState.z = Init<F,I>::initZ();
 
-        mutableState.isSpiking = Init<float,int>::initIsSpiking();
+        mutableState.isSpiking = Init<F,I>::initIsSpiking();
     }
 
-    StaticState staticState;
+    StaticState<F,I> staticState;
     {
-        staticState.input = Dataset<float>::retrieveTransformedDataset();
-        staticState.delays = Init<float,int>::initDelays();
-        staticState.altds = Init<float,int>::initALTDS();
+        staticState.input = Dataset<F>::retrieveTransformedDataset();
+        staticState.delays = Init<F,I>::initDelays();
+        staticState.altds = Init<F,I>::initALTDS();
     }
 
-    Buffers buffers;
+    Buffers<F,I> buffers;
     {
-        buffers.lgnfirings = Init<float,int>::initLgnFiringsBuffer();
-        buffers.poissonNoise = Init<float,int>::initPoissonNoiseBuffer();
-        buffers.neuronInputs = Init<float,int>::initNeuronInputsBuffer();
+        buffers.lgnfirings = Init<F,I>::initLgnFiringsBuffer();
+        buffers.poissonNoise = Init<F,I>::initPoissonNoiseBuffer();
+        buffers.neuronInputs = Init<F,I>::initNeuronInputsBuffer();
 
-        buffers.eachNeurLTD = Init<float,int>::initEachNeurLTD();
-        buffers.eachNeurLTP = Init<float,int>::initEachNeurLTP();
+        buffers.eachNeurLTD = Init<F,I>::initEachNeurLTD();
+        buffers.eachNeurLTP = Init<F,I>::initEachNeurLTP();
     }
 
     wrapper(mutableState, staticState, buffers);
+}
+
+int main(int argc, char* argv[]) {
+    run<float,int>();
 }
