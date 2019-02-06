@@ -4,11 +4,8 @@
 #define WFFINITMAX 0.1
 #define MAXW 50.0
 
-//#define NBE 100
-//#define NBI 20
-
-#define NBE 400
-#define NBI 80
+#define NBE 100
+#define NBI 20
 
 #define NBNEUR (NBE + NBI)
 

@@ -12,6 +12,9 @@
 #include "stats.cuh"
 #include <cooperative_groups.h>
 #include <cuda_runtime.h>
+#include <chrono>
+
+using namespace std::chrono;
 
 using namespace std;
 using namespace Eigen;
@@ -26,9 +29,8 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
     typedef RandomGen<F,curandState> Rgen;
     auto func = test_kernel<F,I,Rgen,numThreadsConstant>;
     
-    //int numBlocks = printSetBlockGridStats(func, numThreadsConstant);
-    int numBlocks = 120;
-
+    int numBlocks = printSetBlockGridStats(func, numThreadsConstant);
+    
     Rgen cudaRgen(numBlocks, numThreads, 1.1, 1.8);
 
     unsigned long long time;
@@ -65,9 +67,13 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
     const int smemSize = 0;
     
     for (int i = 0; i < 10; i++) {
+        auto start = high_resolution_clock::now();
         gpuErrchk( cudaLaunchCooperativeKernel((void*)func,  dimGrid, dimBlock, kernelArgs, smemSize, NULL) );
         gpuErrchk( cudaPeekAtLastError() );
         gpuErrchk( cudaDeviceSynchronize() );
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<microseconds>(stop - start);
+        cout << "Duration: " << duration.count() << " us" << endl;
 
         gpuErrchk( memcpyDeviceToHost(&mutableState, &cudaMutableState) );
         gpuErrchk( memcpyDeviceToHost(&buffers, &cudaBuffers) );
@@ -82,5 +88,3 @@ wrapper<float,int>(MutableState<float,int> mutableState, StaticState<float,int> 
 template void
 wrapper<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers);
 
-//template void
-//wrapper<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers);

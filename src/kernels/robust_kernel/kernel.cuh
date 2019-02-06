@@ -7,8 +7,17 @@
 //todo move shared to per block declaration
 
 template<typename F, typename I, typename Rgen>
-__device__ void fillBuffers(CudaMatrixX<F> input, CudaMatrixX<I> lgnfirings, CudaMatrixX<I> poissonNoise, CudaMatrixX<I> incomingSpikes, CudaVectorX<I> firings, Rgen rgen, int inputRow) {
-
+__device__ void fillBuffers
+(
+    CudaMatrixX<F> input,
+    CudaMatrixX<I> lgnfirings,
+    CudaMatrixX<I> poissonNoise,
+    CudaMatrixX<I> incomingSpikes,
+    CudaVectorX<I> firings,
+    Rgen rgen,
+    int inputRow
+)
+{
     const unsigned int tid = threadIdx.x;
 
     //Clear incoming spikes
@@ -33,7 +42,7 @@ __device__ void fillBuffers(CudaMatrixX<F> input, CudaMatrixX<I> lgnfirings, Cud
     for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
         I* lgnfiringsRowPtr = lgnfirings.getRowPtr(row);
         for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
-            F rand = rgen.sampleUniform(tid,&g);
+            const F rand = rgen.sampleUniform(tid,&g);
             lgnfiringsRowPtr[i] = rand < rowPtr[i];
         }
     }
@@ -42,8 +51,8 @@ __device__ void fillBuffers(CudaMatrixX<F> input, CudaMatrixX<I> lgnfirings, Cud
     for (int row = blockIdx.x; row < NBSTEPSPERPRES; row += gridDim.x) {
         I* poissonNoiseRowPtr = poissonNoise.getRowPtr(row);
         for (int i = tid; i < NBNEUR; i += blockDim.x) {
-            int rand1 = rgen.samplePosPoisson(tid,&g);
-            int rand2 = rgen.sampleNegPoisson(tid,&g);
+            const int rand1 = rgen.samplePosPoisson(tid,&g);
+            const int rand2 = rgen.sampleNegPoisson(tid,&g);
             poissonNoiseRowPtr[i] = rand1 + rand2;
         }
     }
@@ -64,7 +73,6 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
     const unsigned int tid = block.thread_rank();
 
     const int ffrfBlockOffset = NBNEUR / NUMTHREADS + 1;
-    
     const int id = blockIdx.x * blockDim.x + threadIdx.x;
 
     F vthresh, vlongtrace, vneg, vpos;
@@ -103,7 +111,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                     iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
                 }
 
-                F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
+                const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
 
                 if (tid == 0) {
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);
@@ -128,18 +136,14 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
 
             //const int nid = threadIdx.x + blockDim.x * blockIdx.x;
             if (id < NBNEUR) {
-                { 
-                    const F vprev = v;
-                    vlongtrace = vlongtrace + (DT / TAUVLONGTRACE) * (max(0.0,(vprev - THETAVLONGTRACE)) - vlongtrace);
-                    vneg = vneg + (DT / TAUVNEG) * (vprev - vneg);
-                    vpos = vpos + (DT / TAUVPOS) * (vprev - vpos);
-                }
+                const F vprev = v;
+                vlongtrace = vlongtrace + (DT / TAUVLONGTRACE) * (max(0.0,(vprev - THETAVLONGTRACE)) - vlongtrace);
+                vneg = vneg + (DT / TAUVNEG) * (vprev - vneg);
+                vpos = vpos + (DT / TAUVPOS) * (vprev - vpos);
 
                 /* PRE-SPIKE UPDATE */
-                {
-                    const F input = b.neuronInputs.data[id];
-                    v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
-                }
+                const F input = b.neuronInputs.data[id];
+                v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
 
                 if (isSpiking > 1) {
                     v = VPEAK-0.001;
@@ -156,17 +160,15 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 v = max(v,MINV);
 
                 /* SPIKE UPDATE */
-                {
-                    I firing = 0;
-                    if (v > VPEAK) {
-                        firing = 1;
-                        v = VPEAK;
-                        isSpiking = NBSPIKINGSTEPS;
-                    }
-                    xplastLat = xplastLat + firing / TAUXPLAST - (DT / TAUXPLAST) * xplastLat;
-                    ms.firings.data[id] = firing;
-                    ms.xplastLat.data[id] = xplastLat;
+                I firing = 0;
+                if (v > VPEAK) {
+                    firing = 1;
+                    v = VPEAK;
+                    isSpiking = NBSPIKINGSTEPS;
                 }
+                xplastLat = xplastLat + firing / TAUXPLAST - (DT / TAUXPLAST) * xplastLat;
+                ms.firings.data[id] = firing;
+                ms.xplastLat.data[id] = xplastLat;
 
                 /* POST-SPIKE UPDATE */
                 wadap = wadap + (DT / TAUADAP) * (CONSTA * (v - ELEAK) - wadap);
@@ -185,44 +187,42 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
             for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
                 const F neurLTP = b.eachNeurLTP.data[row];
                 const F neurLTD = b.eachNeurLTD.data[row];
-                {
-                    const I* rowLgnFirings = b.lgnfirings.getRowPtr(numStepsThisPres);
-                    F* rowWff = ms.wff.getRowPtr(row);
+
+                const I* rowLgnFirings = b.lgnfirings.getRowPtr(numStepsThisPres);
+                F* rowWff = ms.wff.getRowPtr(row);
                 
-                    for (int i = tid; i < FFRFSIZE; i += block.size()) {
-                        const F xplastFF = ms.xplastFF.data[i];
-                        I lgnfirings = 0;
-                        if (numStepsThisPres < NBSTEPSSTIM) {
-                            lgnfirings = rowLgnFirings[i];
-                        }
-                        F wff = rowWff[i];
-                        wff = wff + xplastFF * neurLTP;
-                        wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
-                        wff = min(MAXW,max(0.0,wff));
-                        rowWff[i] = wff;
+                for (int i = tid; i < FFRFSIZE; i += block.size()) {
+                    const F xplastFF = ms.xplastFF.data[i];
+                    I lgnfirings = 0;
+                    if (numStepsThisPres < NBSTEPSSTIM) {
+                        lgnfirings = rowLgnFirings[i];
                     }
+                    F wff = rowWff[i];
+                    wff = wff + xplastFF * neurLTP;
+                    wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
+                    wff = min(MAXW,max(0.0,wff));
+                    rowWff[i] = wff;
                 }
-                {
-                    F* rowW = ms.w.getRowPtr(row);
-                    for (int i = tid; i < NBE; i += block.size()) {
-                        const F xplastLat = ms.xplastLat.data[i];    
-                        const I firing = ms.firings.data[i];
-                        F w = rowW[i];
-                        w = w + xplastLat * neurLTP;
-                        w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
-                        if (row == i) {
-                            w = 0.0;
-                        }
-                        if (i < NBE) {
-                            //Excitory Pruning
-                            w = max(0.0,w);
-                        } else {
-                            // Inhibitory Pruning
-                            w = min(0.0,w);
-                        }
-                        w = min(MAXW,w);
-                        rowW[i] = w;
+
+                F* rowW = ms.w.getRowPtr(row);
+                for (int i = tid; i < NBE; i += block.size()) {
+                    const F xplastLat = ms.xplastLat.data[i];    
+                    const I firing = ms.firings.data[i];
+                    F w = rowW[i];
+                    w = w + xplastLat * neurLTP;
+                    w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
+                    if (row == i) {
+                        w = 0.0;
                     }
+                    if (i < NBE) {
+                        //Excitory Pruning
+                        w = max(0.0,w);
+                    } else {
+                        // Inhibitory Pruning
+                        w = min(0.0,w);
+                    }
+                    w = min(MAXW,w);
+                    rowW[i] = w;
                 }
             }
             
