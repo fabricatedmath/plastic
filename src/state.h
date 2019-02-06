@@ -52,3 +52,10 @@ struct Buffers {
     VectorX<F> eachNeurLTD;
     VectorX<F> eachNeurLTP;
 };
+
+template<typename F>
+struct RandomHistorical {
+    MatrixRX<F> uniformMatrix;
+    MatrixRX<unsigned int> posPoissonMatrix;
+    MatrixRX<unsigned int> negPoissonMatrix;
+};

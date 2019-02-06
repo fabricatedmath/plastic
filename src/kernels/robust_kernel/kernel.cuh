@@ -2,10 +2,6 @@
 
 #include "input.cuh"
 
-//typedef RandomGen<curandState> Rgen;
-
-//todo move shared to per block declaration
-
 template<typename F, typename I, typename Rgen>
 __device__ void fillBuffers
 (
@@ -42,7 +38,7 @@ __device__ void fillBuffers
     for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
         I* lgnfiringsRowPtr = lgnfirings.getRowPtr(row);
         for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
-            const F rand = rgen.sampleUniform(tid,&g);
+            const F rand = rgen.sampleUniform(i,row,&g);
             lgnfiringsRowPtr[i] = rand < rowPtr[i];
         }
     }
@@ -51,8 +47,8 @@ __device__ void fillBuffers
     for (int row = blockIdx.x; row < NBSTEPSPERPRES; row += gridDim.x) {
         I* poissonNoiseRowPtr = poissonNoise.getRowPtr(row);
         for (int i = tid; i < NBNEUR; i += blockDim.x) {
-            const int rand1 = rgen.samplePosPoisson(tid,&g);
-            const int rand2 = rgen.sampleNegPoisson(tid,&g);
+            const int rand1 = rgen.samplePosPoisson(i,row,&g);
+            const int rand2 = rgen.sampleNegPoisson(i,row,&g);
             poissonNoiseRowPtr[i] = rand1 + rand2;
         }
     }

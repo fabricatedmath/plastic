@@ -20,19 +20,30 @@ using namespace std;
 using namespace Eigen;
 namespace cg = cooperative_groups;
 
-const int numThreadsConstant = NUMTHREADS;
+const int numThreads = NUMTHREADS;
 
 template<typename F, typename I>
-void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers) {
-    int numThreads = numThreadsConstant;
-
+void run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers) {
     typedef RandomGen<F,curandState> Rgen;
-    auto func = test_kernel<F,I,Rgen,numThreadsConstant>;
-    
-    int numBlocks = printSetBlockGridStats(func, numThreadsConstant);
-    
+    auto func = test_kernel<F,I,Rgen,numThreads>;
+    int numBlocks = printSetBlockGridStats(func, numThreads);
+    numBlocks = min(NBNEUR,numBlocks);
     Rgen cudaRgen(numBlocks, numThreads, 1.1, 1.8);
+    wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
+}
 
+template<typename F, typename I>
+void run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, RandomHistorical<F> randomHistorical) {
+    typedef RandomGenHistorical<F> Rgen;
+    auto func = test_kernel<F,I,Rgen,numThreads>;
+    int numBlocks = printSetBlockGridStats(func, numThreads);
+    numBlocks = min(NBNEUR,numBlocks);
+    Rgen cudaRgen(randomHistorical);
+    wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
+}
+
+template<class T, typename F, typename I, typename Rgen>
+void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, T func, Rgen cudaRgen, const int numBlocks) {
     unsigned long long time;
     unsigned long long* d_time;
     gpuErrchk( cudaMalloc(&d_time, sizeof(unsigned long long)) );
@@ -51,7 +62,6 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
 
     printNvidiaSmi();
 
-    numBlocks = min(NBNEUR,numBlocks);
     cout << "Num Blocks: " << numBlocks << endl;
 
     void *kernelArgs[] = {
@@ -83,8 +93,14 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
 }
 
 template void
-wrapper<float,int>(MutableState<float,int> mutableState, StaticState<float,int> staticState, Buffers<float,int> buffers);
+run<float,int>(MutableState<float,int> mutableState, StaticState<float,int> staticState, Buffers<float,int> buffers);
 
 template void
-wrapper<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers);
+run<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers);
+
+template void
+run<float,int>(MutableState<float,int> mutableState, StaticState<float,int> staticState, Buffers<float,int> buffers, RandomHistorical<float> randomHistorical);
+
+template void
+run<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers, RandomHistorical<double> randomHistorical);
 

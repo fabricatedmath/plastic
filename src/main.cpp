@@ -52,7 +52,15 @@ void run() {
         buffers.eachNeurLTP = Init<F,I>::initEachNeurLTP();
     }
 
-    wrapper(mutableState, staticState, buffers);
+    RandomHistorical<F> randomHistorical;
+    {
+        randomHistorical.uniformMatrix = MatrixRX<F>::Random(NBSTEPSSTIM, FFRFSIZE);
+        randomHistorical.posPoissonMatrix = MatrixRX<unsigned int>::Random(NBSTEPSPERPRES, NBNEUR);
+        randomHistorical.negPoissonMatrix = MatrixRX<unsigned int>::Random(NBSTEPSPERPRES, NBNEUR);
+    }
+
+    //run(mutableState, staticState, buffers, randomHistorical);
+    run(mutableState, staticState, buffers);
 }
 
 int main(int argc, char* argv[]) {

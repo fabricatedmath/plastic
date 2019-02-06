@@ -3,19 +3,47 @@
 #include <curand_kernel.h>
 #include <curand.h>
 
+#include "cuda_state.cuh"
 #include "err.cuh"
 
 using namespace std;
 
 template<typename F>
 struct RandomGenHistorical {
-    F* arrUniform;
-    F* arrPosPoisson;
-    F* arrNegPoisson;
-    __device__ void* get(int id) { return NULL; }
-    __device__ F sampleUniform(int idx, void* empty) { return arrUniform[idx]; }
-    __device__ F samplePosPoisson(int idx, void* empty) { return arrPosPoisson[idx]; }
-    __device__ F sampleNegPoisson(int idx, void* empty) { return arrNegPoisson[idx]; }
+    CudaMatrixX<F> uniformCudaMatrix;
+    CudaMatrixX<unsigned int> posPoissonCudaMatrix;
+    CudaMatrixX<unsigned int> negPoissonCudaMatrix;
+
+    RandomGenHistorical(RandomHistorical<F> randomHistorical) {
+        gpuErrchk( cudaMalloc(&randomHistorical.uniformMatrix, &uniformCudaMatrix) );
+        gpuErrchk( memcpyHostToDevice(&randomHistorical.uniformMatrix, &uniformCudaMatrix) );
+
+        gpuErrchk( cudaMalloc(&randomHistorical.posPoissonMatrix, &posPoissonCudaMatrix) );
+        gpuErrchk( memcpyHostToDevice(&randomHistorical.posPoissonMatrix, &posPoissonCudaMatrix) );
+
+        gpuErrchk( cudaMalloc(&randomHistorical.negPoissonMatrix, &negPoissonCudaMatrix) );
+        gpuErrchk( memcpyHostToDevice(&randomHistorical.negPoissonMatrix, &negPoissonCudaMatrix) );
+    }
+    
+    __device__ void* get(int id) {
+        return NULL;
+    }
+    
+    __device__ F sampleUniform(int x, int y, void* empty) {
+        const F* rowPtr = uniformCudaMatrix.getRowPtr(y);
+        return rowPtr[x];
+    }
+    
+    __device__ unsigned int samplePosPoisson(int x, int y, void* empty) {
+        const unsigned int* rowPtr = posPoissonCudaMatrix.getRowPtr(y);
+        return rowPtr[x];
+    }
+    
+    __device__ unsigned int sampleNegPoisson(int x, int y, void* empty) {
+        const unsigned int* rowPtr = negPoissonCudaMatrix.getRowPtr(y);
+        return rowPtr[x];
+    }
+    
     __device__ void put(int id, void* empty) {}
 };
 
@@ -54,13 +82,13 @@ struct RandomGen {
     __device__ G get(int id) {
         return states[id];
     }
-    __device__ F sampleUniform(int idx, G* localState) {
+    __device__ F sampleUniform(int x, int y, G* localState) {
         return curand_uniform_internal<F,G>(localState);
     }
-    __device__ unsigned int samplePosPoisson(int idx, G* localState) {
+    __device__ unsigned int samplePosPoisson(int x, int y, G* localState) {
         return curand_discrete(localState, posPoisson);
     }
-    __device__ unsigned int sampleNegPoisson(int idx, G* localState) {
+    __device__ unsigned int sampleNegPoisson(int x, int y, G* localState) {
         return curand_discrete(localState, negPoisson);
     }
     __device__ void put(int id, G localState) {
