@@ -29,11 +29,10 @@ __global__ void setup_kernel(G *state)
 template<typename F, typename G>
 __device__ F curand_uniform_internal(G* localState) {
     return curand_uniform(localState);
-}
+};
 
-template <typename G>
-__device__ double curand_uniform_internal<double,G>(G* localState) {
-    printf("doggers\n");
+template <>
+__device__ double curand_uniform_internal<double,curandState>(curandState* localState) {
     return curand_uniform_double(localState);
 }
 
