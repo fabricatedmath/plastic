@@ -58,7 +58,6 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                             Rgen rgen,
                             unsigned long long* time) {
     const unsigned long long startTime = clock64();
-    __shared__ F sdata[numThreads];
     cg::thread_block block = cg::this_thread_block();
     cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(block);
     cg::grid_group grid = cg::this_grid();
@@ -101,10 +100,10 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
                 F iff = 0;
                 if (numStepsThisPres < NBSTEPSSTIM) {
-                    iff = VSTIM * computeIFFNeuron(sdata, block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
+                    iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
                 }
 
-                F ilat = LATCONNMULT * VSTIM * computeILATNeuron(sdata, block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
+                F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
 
                 if (tid == 0) {
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);

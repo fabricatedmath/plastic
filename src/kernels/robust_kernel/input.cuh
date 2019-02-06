@@ -6,10 +6,9 @@ namespace cg = cooperative_groups;
 
 //Use Kahan Summation?
 
-template<typename F, typename I>
+template<typename F, typename I, int numThreads>
 __device__ F computeIFFNeuron
 (
-    F* sdata,
     const cg::thread_block block,
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
@@ -36,6 +35,8 @@ __device__ F computeIFFNeuron
     for (int i = tile32.size() / 2; i > 0; i >>= 1) {
         acc += tile32.shfl_down(acc,i);
     }
+
+    __shared__ F sdata[numThreads];
     sdata[tid] = acc;
 
     cg::sync(block);
@@ -50,10 +51,9 @@ __device__ F computeIFFNeuron
     return acc;
 }
 
-template<typename F, typename I>
+template<typename F, typename I, int numThreads>
 __device__ F computeILATNeuron
 (
-    F* sdata,
     const cg::thread_block block,
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
@@ -63,7 +63,7 @@ __device__ F computeILATNeuron
     CudaMatrixX<I> delays,
     const int row
 )
-{
+{   
     I* incomingSpikesRow = incomingSpikes.getRowPtr(row);
     const I* delaysRow = delays.getRowPtr(row);
     const F* wRow = w.getRowPtr(row);
@@ -94,6 +94,8 @@ __device__ F computeILATNeuron
     for (int i = tile32.size() / 2; i > 0; i >>= 1) {
         acc += tile32.shfl_down(acc,i);
     }
+    
+    __shared__ F sdata[numThreads];
     sdata[tid] = acc;
 
     cg::sync(block);
