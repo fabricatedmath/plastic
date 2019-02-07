@@ -1,4 +1,17 @@
 #pragma once
+#include <iostream>
+#include <Eigen/Dense>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+
+#include "eigen_boost_serialization.hpp"
+
+using namespace std;
+
+using namespace Eigen;
+
+template<typename T>
+using VectorX = Matrix<T, Dynamic, 1>;
 
 template<typename T>
 using MatrixRX = Matrix<T, Dynamic, Dynamic, RowMajor>;

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <cuda.h>
 #include <curand_kernel.h>
@@ -67,6 +69,7 @@ __device__ double curand_uniform_internal<double,curandState>(curandState* local
 template <typename F, typename G>
 struct RandomGen {
     G *states;
+
     curandDiscreteDistribution_t posPoisson;
     curandDiscreteDistribution_t negPoisson;
 

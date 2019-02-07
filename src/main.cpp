@@ -112,15 +112,6 @@ void runTesting() {
 }
 
 int main(int argc, char* argv[]) {
-
-    MatrixRX<float> matrix = MatrixRX<float>::Random(2,2);
-    cout << matrix << endl;
-    storeMatrix("matrix",matrix);
-    MatrixRX<float> matrix2 = loadMatrix<float>("matrix");
-    cout << matrix2 << endl;
-
-
-    exit(1);
     po::options_description desc("Usage");
     desc.add_options()
         ("help", "produce help message")
