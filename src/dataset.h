@@ -1,9 +1,10 @@
 #pragma once
 
+//TODO: make all sizes dynamic, going to bite me later
 template<typename T>
 class Dataset {
 public:
-    typedef Matrix<T,Dynamic,2*FFRFSIZE,RowMajor> MatrixTransformedDataset;
+    typedef MatrixRX<T> MatrixTransformedDataset;
 
     static MatrixTransformedDataset retrieveTransformedDataset() {
         MatrixTransformedDataset transformedDataset;
@@ -23,11 +24,11 @@ public:
 private:
     BOOST_STATIC_ASSERT(is_same<float,T>::value || is_same<double,T>::value);
 
-    typedef Matrix<int8_t, Dynamic, FFRFSIZE, RowMajor> MatrixDataset;
+    typedef MatrixRX<int8_t> MatrixDataset;
     typedef Matrix<int8_t, 1, Dynamic> VectorXu;
 
     static MatrixDataset loadDataset() {
-        const int ffrfSize = FFRFSIZE;
+        const int datarows = PATCHSIZE * PATCHSIZE;
         const string fileName = string("./dataset/patchesCenteredScaledBySumTo126ImageNetONOFFRotatedNewInt8.bin.dat");
         ifstream DataFile (fileName, ios::in | ios::binary | ios::ate);
         if (!DataFile.is_open()) {
@@ -42,8 +43,8 @@ private:
         int8_t* imagedata = (int8_t*) membuf;
 
         int totaldatasize = fsize / sizeof(int8_t); // To change depending on whether the data is float/single (4) or double (8)
-        int numRows = totaldatasize/ffrfSize;
-        int numCols = ffrfSize;
+        int numRows = totaldatasize/datarows;
+        int numCols = datarows;
 
         cout << "Data read!" << " total read: " << totaldatasize << endl;
         Map<VectorXu> mf (imagedata,totaldatasize);
@@ -54,9 +55,9 @@ private:
 
 
     static MatrixTransformedDataset transformDataset(MatrixDataset d) {
-        Matrix<double,Dynamic,FFRFSIZE,RowMajor> dd = d.cast<double>();
+        MatrixRX<double> dd = d.cast<double>();
 
-        Matrix<double,Dynamic,2*FFRFSIZE,RowMajor> out(dd.rows(), 2*dd.cols());
+        MatrixRX<double> out(dd.rows(), 2*dd.cols());
         out << dd, dd;
 
         out.leftCols(dd.cols()) = out.leftCols(dd.cols()).cwiseMax(0);
@@ -74,10 +75,7 @@ private:
     }
 
     static void storeTransformedDataset(MatrixTransformedDataset transformedDataset) {
-        string fileName = string("dataset/transformedDataset.").append(typeid(T).name());
-        std::ofstream ofs(fileName);
-        boost::archive::binary_oarchive oa(ofs);
-        oa << transformedDataset;
+        storeMatrix("dataset/transformedDataset", transformedDataset);
     }
 
     static bool checkForCachedTransformedDataset() {
@@ -87,11 +85,8 @@ private:
     }
 
     static MatrixTransformedDataset loadTransformedDataset() {
-        MatrixTransformedDataset transformedDataset;
-        string fileName = string("dataset/transformedDataset.").append(typeid(T).name());
-        std::ifstream ifs(fileName);
-        boost::archive::binary_iarchive ia(ifs);
-        ia & transformedDataset;
+        MatrixTransformedDataset transformedDataset = loadMatrix<T>("dataset/transformedDataset");
+        BOOST_VERIFY(transformedDataset.cols() == FFRFSIZE);
         return transformedDataset;
     }
 };
