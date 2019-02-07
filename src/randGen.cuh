@@ -70,12 +70,20 @@ template <typename F, typename G>
 struct RandomGen {
     G *states;
 
+    const double posLambda;
+    const double negLambda;
+
     curandDiscreteDistribution_t posPoisson;
     curandDiscreteDistribution_t negPoisson;
 
-    RandomGen(const int numBlocks, const int numThreads, const double posLambda, const double negLambda) {
-        gpuErrchkCuRand( curandCreatePoissonDistribution(posLambda,&posPoisson) );
-        gpuErrchkCuRand( curandCreatePoissonDistribution(negLambda,&negPoisson) );
+    RandomGen(const int numBlocks, const int numThreads, const double posLambda, const double negLambda)
+        : posLambda(posLambda), negLambda(negLambda) {
+        if (posLambda != 0.0) {
+            gpuErrchkCuRand( curandCreatePoissonDistribution(posLambda,&posPoisson) );
+        }
+        if (negLambda != 0.0) {
+            gpuErrchkCuRand( curandCreatePoissonDistribution(negLambda,&negPoisson) );
+        }
         gpuErrchk( cudaMalloc((void **)&states, numBlocks * numThreads * sizeof(G)) );
         setup_kernel<G><<<numBlocks,numThreads>>>(states);
         gpuErrchk( cudaPeekAtLastError() );
@@ -89,9 +97,15 @@ struct RandomGen {
         return curand_uniform_internal<F,G>(localState);
     }
     __device__ unsigned int samplePosPoisson(int x, int y, G* localState) {
+        if (posLambda == 0.0) {
+            return 0;
+        }
         return curand_discrete(localState, posPoisson);
     }
     __device__ unsigned int sampleNegPoisson(int x, int y, G* localState) {
+        if (negLambda == 0.0) {
+            return 0;
+        }
         return curand_discrete(localState, negPoisson);
     }
     __device__ void put(int id, G localState) {

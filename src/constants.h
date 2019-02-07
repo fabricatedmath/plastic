@@ -55,7 +55,7 @@
 
 #define NBSPIKINGSTEPS 1
 
-#define NEGNOISERATE 0.1
+#define NEGNOISERATE 0.0
 #define POSNOISERATE 1.8
 
 #define TAUADAP 144.0
