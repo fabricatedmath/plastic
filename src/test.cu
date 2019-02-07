@@ -28,7 +28,7 @@ void run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F
     auto func = test_kernel<F,I,Rgen,numThreads>;
     int numBlocks = printSetBlockGridStats(func, numThreads);
     numBlocks = min(NBNEUR,numBlocks);
-    Rgen cudaRgen(numBlocks, numThreads, 1.1, 1.8);
+    Rgen cudaRgen(numBlocks, numThreads, POSNOISERATE, NEGNOISERATE);
     wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
 }
 
@@ -62,7 +62,7 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
 
     printNvidiaSmi();
 
-    cout << "Num Blocks: " << numBlocks << endl;
+    cout << "Num Blocks Used: " << numBlocks << endl << endl;
 
     void *kernelArgs[] = {
         (void*)&cudaMutableState,
@@ -88,7 +88,7 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
         gpuErrchk( memcpyDeviceToHost(&mutableState, &cudaMutableState) );
         gpuErrchk( memcpyDeviceToHost(&buffers, &cudaBuffers) );
         gpuErrchk( cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost) );
-        cout << "Clocks: " << time << endl;
+        cout << "Clocks: " << time << endl << endl;
     }
 }
 

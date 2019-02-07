@@ -13,7 +13,7 @@ NVCCFLAGS = -lineinfo -rdc=true -Xptxas -v --expt-relaxed-constexpr
 ALL_CCFLAGS += -dc #-Xptxas -dlcm=cg
 
 CXXFLAGS += -std=c++17 $(INCLUDES)
-LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcurand -lboost_serialization -lcudadevrt
+LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcurand -lboost_serialization -lcudadevrt -lboost_program_options
 #GENCODE_FLAGS := -gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75
 GENCODE_FLAGS := -gencode arch=compute_75,code=sm_75
 
@@ -36,7 +36,7 @@ all: build
 build: $(TARGET)
 
 run: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) ${ARGS}
 
 -include $(DEPS)
 -include $(CUDA_DEPS)

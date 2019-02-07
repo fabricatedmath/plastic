@@ -4,9 +4,6 @@
 
 using namespace Eigen;
 
-typedef Matrix<float, Dynamic, Dynamic, RowMajor> MatrixRXf;
-typedef Matrix<int, Dynamic, Dynamic, RowMajor> MatrixRXi;
-
 template<typename T>
 using MatrixRX = Matrix<T, Dynamic, Dynamic, RowMajor>;
 
