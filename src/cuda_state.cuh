@@ -54,11 +54,8 @@ template<typename F, typename I>
 struct CudaMutableState {
     CudaMatrixX<F> w;
     CudaMatrixX<F> wff;
-    CudaMatrixX<I> incomingSpikes;
-    CudaVectorX<I> firings;
 
     CudaVectorX<F> v;
-    CudaVectorX<F> vprev;
     CudaVectorX<F> vthresh;
     CudaVectorX<F> vlongtrace;
     CudaVectorX<F> vpos;
@@ -69,19 +66,14 @@ struct CudaMutableState {
 
     CudaVectorX<F> wadap;
     CudaVectorX<F> z;
-
-    CudaVectorX<I> isSpiking;
 };
 
 template<typename F, typename I>
 cudaError_t cudaMalloc(MutableState<F,I>* s, CudaMutableState<F,I>* cs) {
     errRet( cudaMalloc(&s->w,&cs->w) );
     errRet( cudaMalloc(&s->wff,&cs->wff) );
-    errRet( cudaMalloc(&s->incomingSpikes,&cs->incomingSpikes) );
-    errRet( cudaMalloc(&s->firings,&cs->firings) );
     
     errRet( cudaMalloc(&s->v,&cs->v) );
-    errRet( cudaMalloc(&s->vprev,&cs->vprev) );
     errRet( cudaMalloc(&s->vthresh,&cs->vthresh) );
     errRet( cudaMalloc(&s->vlongtrace,&cs->vlongtrace) );
     errRet( cudaMalloc(&s->vpos,&cs->vpos) );
@@ -93,8 +85,6 @@ cudaError_t cudaMalloc(MutableState<F,I>* s, CudaMutableState<F,I>* cs) {
     errRet( cudaMalloc(&s->wadap,&cs->wadap) );
     errRet( cudaMalloc(&s->z,&cs->z) );
     
-    errRet( cudaMalloc(&s->isSpiking,&cs->isSpiking) );
-    
     return cudaSuccess;
 }
 
@@ -102,11 +92,8 @@ template<typename F, typename I>
 cudaError_t memcpyHostToDevice(MutableState<F,I>* s, CudaMutableState<F,I>* cs) {
     errRet( memcpyHostToDevice(&s->w,&cs->w) );
     errRet( memcpyHostToDevice(&s->wff,&cs->wff) );
-    errRet( memcpyHostToDevice(&s->incomingSpikes,&cs->incomingSpikes) );
-    errRet( memcpyHostToDevice(&s->firings,&cs->firings) );
 
     errRet( memcpyHostToDevice(&s->v,&cs->v) );
-    errRet( memcpyHostToDevice(&s->vprev,&cs->vprev) );
     errRet( memcpyHostToDevice(&s->vthresh,&cs->vthresh) );
     errRet( memcpyHostToDevice(&s->vlongtrace,&cs->vlongtrace) );
     errRet( memcpyHostToDevice(&s->vpos,&cs->vpos) );
@@ -118,7 +105,6 @@ cudaError_t memcpyHostToDevice(MutableState<F,I>* s, CudaMutableState<F,I>* cs) 
     errRet( memcpyHostToDevice(&s->wadap,&cs->wadap) );
     errRet( memcpyHostToDevice(&s->z,&cs->z) );
     
-    errRet( memcpyHostToDevice(&s->isSpiking,&cs->isSpiking) );
     return cudaSuccess;
 }
 
@@ -126,11 +112,8 @@ template<typename F, typename I>
 cudaError_t memcpyDeviceToHost(MutableState<F,I>* s, CudaMutableState<F,I>* cs) {
     errRet( memcpyDeviceToHost(&s->w,&cs->w) );
     errRet( memcpyDeviceToHost(&s->wff,&cs->wff) );
-    errRet( memcpyDeviceToHost(&s->incomingSpikes,&cs->incomingSpikes) );
-    errRet( memcpyDeviceToHost(&s->firings,&cs->firings) );
 
     errRet( memcpyDeviceToHost(&s->v,&cs->v) );
-    errRet( memcpyDeviceToHost(&s->vprev,&cs->vprev) );
     errRet( memcpyDeviceToHost(&s->vthresh,&cs->vthresh) );
     errRet( memcpyDeviceToHost(&s->vlongtrace,&cs->vlongtrace) );
     errRet( memcpyDeviceToHost(&s->vpos,&cs->vpos) );
@@ -141,8 +124,7 @@ cudaError_t memcpyDeviceToHost(MutableState<F,I>* s, CudaMutableState<F,I>* cs) 
     
     errRet( memcpyDeviceToHost(&s->wadap,&cs->wadap) );
     errRet( memcpyDeviceToHost(&s->z,&cs->z) );
-    
-    errRet( memcpyDeviceToHost(&s->isSpiking,&cs->isSpiking) );
+
     return cudaSuccess;
 }
 
@@ -179,15 +161,21 @@ cudaError_t memcpyDeviceToHost(StaticState<F,I>* s, CudaStaticState<F,I>* cs) {
 
 template<typename F, typename I>
 struct CudaBuffers {
+    CudaMatrixX<I> incomingSpikes;
+    CudaVectorX<I> firings;
+    
     CudaMatrixX<I> lgnfirings;
     CudaMatrixX<I> poissonNoise;
     CudaVectorX<F> neuronInputs;
+    
     CudaVectorX<F> eachNeurLTD;
     CudaVectorX<F> eachNeurLTP;
 };
 
 template<typename F, typename I>
 cudaError_t cudaMalloc(Buffers<F,I>* s, CudaBuffers<F,I>* cs) {
+    errRet( cudaMalloc(&s->incomingSpikes,&cs->incomingSpikes) );
+    errRet( cudaMalloc(&s->firings,&cs->firings) );
     errRet( cudaMalloc(&s->lgnfirings,&cs->lgnfirings) );
     errRet( cudaMalloc(&s->poissonNoise,&cs->poissonNoise) );
     errRet( cudaMalloc(&s->neuronInputs,&cs->neuronInputs) );
@@ -198,6 +186,8 @@ cudaError_t cudaMalloc(Buffers<F,I>* s, CudaBuffers<F,I>* cs) {
 
 template<typename F, typename I>
 cudaError_t memcpyHostToDevice(Buffers<F,I>* s, CudaBuffers<F,I>* cs) {
+    errRet( memcpyHostToDevice(&s->incomingSpikes,&cs->incomingSpikes) );
+    errRet( memcpyHostToDevice(&s->firings,&cs->firings) );
     errRet( memcpyHostToDevice(&s->lgnfirings,&cs->lgnfirings) );
     errRet( memcpyHostToDevice(&s->poissonNoise,&cs->poissonNoise) );
     errRet( memcpyHostToDevice(&s->neuronInputs,&cs->neuronInputs) );
@@ -208,6 +198,8 @@ cudaError_t memcpyHostToDevice(Buffers<F,I>* s, CudaBuffers<F,I>* cs) {
 
 template<typename F, typename I>
 cudaError_t memcpyDeviceToHost(Buffers<F,I>* s, CudaBuffers<F,I>* cs) {
+    errRet( memcpyDeviceToHost(&s->incomingSpikes,&cs->incomingSpikes) );
+    errRet( memcpyDeviceToHost(&s->firings,&cs->firings) );
     errRet( memcpyDeviceToHost(&s->lgnfirings,&cs->lgnfirings) );
     errRet( memcpyDeviceToHost(&s->poissonNoise,&cs->poissonNoise) );
     errRet( memcpyDeviceToHost(&s->neuronInputs,&cs->neuronInputs) );

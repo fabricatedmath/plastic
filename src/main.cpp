@@ -20,11 +20,8 @@ void run() {
     {
         mutableState.w = Init<F,I>::initW();
         mutableState.wff = Init<F,I>::initWff();
-        mutableState.incomingSpikes = Init<F,I>::initIncomingSpikes();
-        mutableState.firings = Init<F,I>::initFirings();
 
         mutableState.v = Init<F,I>::initV();
-        mutableState.vprev = Init<F,I>::initVPrev();
         mutableState.vthresh = Init<F,I>::initVThresh();
         mutableState.vlongtrace = Init<F,I>::initVLongtrace();
         mutableState.vpos = Init<F,I>::initVPos();
@@ -35,8 +32,6 @@ void run() {
 
         mutableState.wadap = Init<F,I>::initWadap();
         mutableState.z = Init<F,I>::initZ();
-
-        mutableState.isSpiking = Init<F,I>::initIsSpiking();
     }
 
     StaticState<F,I> staticState;
@@ -48,6 +43,9 @@ void run() {
 
     Buffers<F,I> buffers;
     {
+        buffers.incomingSpikes = Init<F,I>::initIncomingSpikes();
+        buffers.firings = Init<F,I>::initFirings();
+
         buffers.lgnfirings = Init<F,I>::initLgnFiringsBuffer();
         buffers.poissonNoise = Init<F,I>::initPoissonNoiseBuffer();
         buffers.neuronInputs = Init<F,I>::initNeuronInputsBuffer();
@@ -59,53 +57,51 @@ void run() {
     run(mutableState, staticState, buffers);
 }
 
-template<typename F, typename I>
-void runTesting() {
-    MutableState<F,I> mutableState;
+void runTesting(int i) {
+    MutableState<double,int> mutableState;
     {
-        mutableState.w = Init<F,I>::initW();
-        mutableState.wff = Init<F,I>::initWff();
-        mutableState.incomingSpikes = Init<F,I>::initIncomingSpikes();
-        mutableState.firings = Init<F,I>::initFirings();
+        string is = "-" + to_string(i);
+        mutableState.w = loadMatrix<double>("data/w" + is);
+        mutableState.wff = loadMatrix<double>("data/wff" + is);
 
-        mutableState.v = Init<F,I>::initV();
-        mutableState.vprev = Init<F,I>::initVPrev();
-        mutableState.vthresh = Init<F,I>::initVThresh();
-        mutableState.vlongtrace = Init<F,I>::initVLongtrace();
-        mutableState.vpos = Init<F,I>::initVPos();
-        mutableState.vneg = Init<F,I>::initVNeg();
+        mutableState.v = loadVector<double>("data/v" + is);
+        mutableState.vthresh = loadVector<double>("data/vthresh" + is);
+        mutableState.vlongtrace = loadVector<double>("data/vlongtrace" + is);
+        mutableState.vpos = loadVector<double>("data/vpos" + is);
+        mutableState.vneg = loadVector<double>("data/vneg" + is);
 
-        mutableState.xplastLat = Init<F,I>::initXPlastLat();
-        mutableState.xplastFF = Init<F,I>::initXPlastFF();
+        mutableState.xplastLat = loadVector<double>("data/xplastLat" + is);
+        mutableState.xplastFF = loadVector<double>("data/xplastFF" + is);
 
-        mutableState.wadap = Init<F,I>::initWadap();
-        mutableState.z = Init<F,I>::initZ();
-
-        mutableState.isSpiking = Init<F,I>::initIsSpiking();
+        mutableState.wadap = loadVector<double>("data/wadap" + is);
+        mutableState.z = loadVector<double>("data/z" + is);
     }
 
-    StaticState<F,I> staticState;
+    StaticState<double,int> staticState;
     {
-        staticState.input = Dataset<F>::retrieveTransformedDataset();
-        staticState.delays = Init<F,I>::initDelays();
-        staticState.altds = Init<F,I>::initALTDS();
+        staticState.input = Dataset<double>::retrieveTransformedDataset();
+        staticState.delays = loadMatrix<int>("data/delays");
+        staticState.altds = loadMatrix<double>("data/altds");
     }
 
-    Buffers<F,I> buffers;
+    Buffers<double,int> buffers;
     {
-        buffers.lgnfirings = Init<F,I>::initLgnFiringsBuffer();
-        buffers.poissonNoise = Init<F,I>::initPoissonNoiseBuffer();
-        buffers.neuronInputs = Init<F,I>::initNeuronInputsBuffer();
+        buffers.incomingSpikes = Init<double,int>::initIncomingSpikes();
+        buffers.firings = Init<double,int>::initFirings();
 
-        buffers.eachNeurLTD = Init<F,I>::initEachNeurLTD();
-        buffers.eachNeurLTP = Init<F,I>::initEachNeurLTP();
+        buffers.lgnfirings = Init<double,int>::initLgnFiringsBuffer();
+        buffers.poissonNoise = Init<double,int>::initPoissonNoiseBuffer();
+        buffers.neuronInputs = Init<double,int>::initNeuronInputsBuffer();
+
+        buffers.eachNeurLTD = Init<double,int>::initEachNeurLTD();
+        buffers.eachNeurLTP = Init<double,int>::initEachNeurLTP();
     }
 
-    RandomHistorical<F> randomHistorical;
+    RandomHistorical<double> randomHistorical;
     {
-        randomHistorical.uniformMatrix = MatrixRX<F>::Random(NBSTEPSSTIM, FFRFSIZE);
-        randomHistorical.posPoissonMatrix = MatrixRX<unsigned int>::Random(NBSTEPSPERPRES, NBNEUR);
-        randomHistorical.negPoissonMatrix = MatrixRX<unsigned int>::Random(NBSTEPSPERPRES, NBNEUR);
+        randomHistorical.uniformMatrix = loadMatrix<double>("data/randlgnrates");
+        randomHistorical.posPoissonMatrix = loadMatrix<unsigned int>("data/posnoise");
+        randomHistorical.negPoissonMatrix = loadMatrix<unsigned int>("data/negnoise");
     }
 
     run(mutableState, staticState, buffers, randomHistorical);
@@ -129,10 +125,11 @@ int main(int argc, char* argv[]) {
     if(opts.count("testing")) {
         if (opts.count("double")) {
             cout << "Running Doubles, Testing" << endl;
-            runTesting<double,int>();
+            runTesting(0);
         } else {
             cout << "Running Floats, Testing" << endl;
-            runTesting<float,int>();
+            cout << "no option to do this, dying" << endl;
+            exit(1);
         }
     } else {
         if (opts.count("double")) {

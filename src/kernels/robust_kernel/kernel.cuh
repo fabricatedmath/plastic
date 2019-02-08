@@ -61,6 +61,9 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                             CudaStaticState<F,I> ss,
                             CudaBuffers<F,I> b,
                             Rgen rgen,
+                            int inputRow,
+                            const int numInputRows,
+                            const int numPresThisLaunch,
                             unsigned long long* time) {
     const unsigned long long startTime = clock64();
     cg::thread_block block = cg::this_thread_block();
@@ -91,9 +94,13 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
         altds = ss.altds.data[id];
     }
 
-    for (int inputRow = 0; inputRow < 100; inputRow++) {
-        
-        fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, ms.incomingSpikes, ms.firings, rgen, inputRow);
+    inputRow--;
+    for (int numPres = 0; numPres < numPresThisLaunch; numPres++) {
+        inputRow++;
+        if (inputRow > numInputRows) {
+            inputRow = 0;
+        }
+        fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, b.incomingSpikes, b.firings, rgen, inputRow);
         
         cg::sync(grid);
 
@@ -107,7 +114,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                     iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
                 }
 
-                const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, ms.incomingSpikes, ms.firings, ss.delays, row);
+                const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, b.incomingSpikes, b.firings, ss.delays, row);
 
                 if (tid == 0) {
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);
@@ -163,7 +170,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                     isSpiking = NBSPIKINGSTEPS;
                 }
                 xplastLat = xplastLat + firing / TAUXPLAST - (DT / TAUXPLAST) * xplastLat;
-                ms.firings.data[id] = firing;
+                b.firings.data[id] = firing;
                 ms.xplastLat.data[id] = xplastLat;
 
                 /* POST-SPIKE UPDATE */
@@ -203,7 +210,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 F* rowW = ms.w.getRowPtr(row);
                 for (int i = tid; i < NBE; i += block.size()) {
                     const F xplastLat = ms.xplastLat.data[i];    
-                    const I firing = ms.firings.data[i];
+                    const I firing = b.firings.data[i];
                     F w = rowW[i];
                     w = w + xplastLat * neurLTP;
                     w = w + firing * neurLTD * (1.0 + w * WPENSCALE);

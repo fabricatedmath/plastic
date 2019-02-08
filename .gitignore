@@ -2,6 +2,7 @@ bin/*
 obj/*
 dataset/*.f
 dataset/*.d
+data
 
 *.f
 *.d

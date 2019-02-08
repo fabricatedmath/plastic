@@ -14,11 +14,8 @@ template<typename F, typename I>
 struct MutableState {
     MatrixRX<F> w;
     MatrixRX<F> wff;
-    MatrixRX<I> incomingSpikes;
-    VectorX<I> firings;
 
     VectorX<F> v;
-    VectorX<F> vprev;
     VectorX<F> vthresh;
     VectorX<F> vlongtrace;
     VectorX<F> vpos;
@@ -29,8 +26,6 @@ struct MutableState {
 
     VectorX<F> wadap;
     VectorX<F> z;
-
-    VectorX<I> isSpiking;
 };
 
 template<typename F, typename I>
@@ -42,6 +37,9 @@ struct StaticState {
 
 template<typename F, typename I>
 struct Buffers {
+    MatrixRX<I> incomingSpikes;
+    VectorX<I> firings;
+
     MatrixRX<I> lgnfirings;
     MatrixRX<I> poissonNoise;
     VectorX<F> neuronInputs;

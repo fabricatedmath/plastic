@@ -64,11 +64,18 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
 
     cout << "Num Blocks Used: " << numBlocks << endl << endl;
 
+    int inputRow = 0;
+    int numInputRows = 110000;
+    int numPresThisLaunch = 1;
+
     void *kernelArgs[] = {
         (void*)&cudaMutableState,
         (void*)&cudaStaticState,
         (void*)&cudaBuffers,
         (void*)&cudaRgen,
+        (void*)&inputRow,
+        (void*)&numInputRows,
+        (void*)&numPresThisLaunch,
         (void*)&d_time
     };
 
@@ -76,7 +83,7 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
     const dim3 dimGrid(numBlocks,1,1);
     const int smemSize = 0;
     
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 1; i++) {
         auto start = high_resolution_clock::now();
         gpuErrchk( cudaLaunchCooperativeKernel((void*)func,  dimGrid, dimBlock, kernelArgs, smemSize, NULL) );
         gpuErrchk( cudaPeekAtLastError() );

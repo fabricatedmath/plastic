@@ -53,11 +53,6 @@ public:
         return VectorV::Constant(IZHREST);
     }
 
-    typedef Matrix<FT,1,NBNEUR,RowMajor> VectorVPrev;
-    static VectorVPrev initVPrev() {
-        return initV();
-    }
-
     typedef Matrix<FT,1,NBNEUR,RowMajor> VectorVThresh;
     static VectorVThresh initVThresh() {
         return VectorVThresh::Constant(VTREST);
@@ -97,11 +92,6 @@ public:
     typedef Matrix<FT,1,NBNEUR,RowMajor> VectorZ;
     static VectorZ initZ() {
         return VectorZ::Zero();
-    }
-
-    typedef Matrix<IT,1,NBNEUR,RowMajor> VectorIsSpiking;
-    static VectorIsSpiking initIsSpiking() {
-        return VectorIsSpiking::Zero();
     }
 
     /* Static State */
@@ -171,9 +161,6 @@ template <typename FT, typename IT>
     using VectorV = typename Init<FT,IT>::VectorV;
 
 template <typename FT, typename IT>
-    using VectorVPrev = typename Init<FT,IT>::VectorVPrev;
-
-template <typename FT, typename IT>
     using VectorVThresh = typename Init<FT,IT>::VectorVThresh;
 
 template <typename FT, typename IT>
@@ -196,9 +183,6 @@ template <typename FT, typename IT>
 
 template <typename FT, typename IT>
     using VectorZ = typename Init<FT,IT>::VectorZ;
-
-template <typename FT, typename IT>
-    using VectorSpikesThisStep = typename Init<FT,IT>::VectorSpikesThisStep;
 
 /* Static State */
 template <typename FT, typename IT>
