@@ -108,7 +108,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
 
         F v = ELEAK;
         int isSpiking = 0;
-        for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
+        for (int numStepsThisPres = 0; numStepsThisPres < 2; numStepsThisPres++) {
             /* Calculate Inputs with block per Neuron */
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
                 F iff = 0;
@@ -131,9 +131,16 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);
                     const F noise = noiseRowPtr[row];
                     const F input = iff + ilat + noise;
+                    if (blockIdx.x == 0) {
+                        printf("this input: %.15f\n", input);
+                    }
                     //printf("input: %d : %.15f\n", blockIdx.x, input);
                     b.neuronInputs.data[row] = input;
+                    if (blockIdx.x == 0) {
+                        printf("this input: %.15f\n", b.neuronInputs.data[row]);
+                    }
                 }
+                cg::sync(block);
             }
             /* Sync blocks from Input calculation */
             cg::sync(grid);
@@ -158,8 +165,16 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 vpos = vpos + (DT / TAUVPOS) * (vprev - vpos);
 
                 /* PRE-SPIKE UPDATE */
-                const F input = b.neuronInputs.data[id];
+                
+                F input = b.neuronInputs.data[id];
+                if (id == 0) {
+                    printf("input: %.15f\n", input);
+                }
                 v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
+                if (id == 0) {
+                    printf("input: %.15f\n", input);
+                    printf("v: %.15f\n", v);                    
+                }
 
                 if (isSpiking > 1) {
                     v = VPEAK-0.001;

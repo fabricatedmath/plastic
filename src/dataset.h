@@ -1,6 +1,10 @@
 #pragma once
 
-//TODO: make all sizes dynamic, going to bite me later
+#include "constants.h"
+#include "loader.h"
+
+using namespace std;
+
 template<typename T>
 class Dataset {
 public:

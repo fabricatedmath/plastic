@@ -23,27 +23,27 @@ namespace cg = cooperative_groups;
 const int numThreads = NUMTHREADS;
 
 template<typename F, typename I>
-void run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers) {
+MutableState<F,I> run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers) {
     typedef RandomGen<F,curandState> Rgen;
     auto func = test_kernel<F,I,Rgen,numThreads>;
     int numBlocks = printSetBlockGridStats(func, numThreads);
     numBlocks = min(NBNEUR,numBlocks);
     Rgen cudaRgen(numBlocks, numThreads, POSNOISERATE, NEGNOISERATE);
-    wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
+    return wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
 }
 
 template<typename F, typename I>
-void run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, RandomHistorical<F> randomHistorical) {
+MutableState<F,I> run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, RandomHistorical<F> randomHistorical) {
     typedef RandomGenHistorical<F> Rgen;
     auto func = test_kernel<F,I,Rgen,numThreads>;
     int numBlocks = printSetBlockGridStats(func, numThreads);
     numBlocks = min(NBNEUR,numBlocks);
     Rgen cudaRgen(randomHistorical);
-    wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
+    return wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
 }
 
 template<class T, typename F, typename I, typename Rgen>
-void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, T func, Rgen cudaRgen, const int numBlocks) {
+MutableState<F,I> wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, T func, Rgen cudaRgen, const int numBlocks) {
     unsigned long long time;
     unsigned long long* d_time;
     gpuErrchk( cudaMalloc(&d_time, sizeof(unsigned long long)) );
@@ -64,9 +64,9 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
 
     cout << "Num Blocks Used: " << numBlocks << endl << endl;
 
-    int inputRow = 402;
+    int inputRow = 0;
     int numInputRows = 110000;
-    int numPresThisLaunch = 100;
+    int numPresThisLaunch = 1;
 
     void *kernelArgs[] = {
         (void*)&cudaMutableState,
@@ -97,17 +97,19 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
         gpuErrchk( cudaMemcpy(&time, d_time, sizeof(unsigned long long), cudaMemcpyDeviceToHost) );
         cout << "Clocks: " << time << endl << endl;
     }
+
+    return mutableState;
 }
 
-template void
+template MutableState<float,int>
 run<float,int>(MutableState<float,int> mutableState, StaticState<float,int> staticState, Buffers<float,int> buffers);
 
-template void
+template MutableState<double,int>
 run<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers);
 
-template void
+template MutableState<float,int>
 run<float,int>(MutableState<float,int> mutableState, StaticState<float,int> staticState, Buffers<float,int> buffers, RandomHistorical<float> randomHistorical);
 
-template void
+template MutableState<double,int>
 run<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers, RandomHistorical<double> randomHistorical);
 

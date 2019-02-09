@@ -15,7 +15,6 @@ struct MutableState {
     MatrixRX<F> w;
     MatrixRX<F> wff;
 
-    VectorX<F> v;
     VectorX<F> vthresh;
     VectorX<F> vlongtrace;
     VectorX<F> vpos;

@@ -55,7 +55,6 @@ struct CudaMutableState {
     CudaMatrixX<F> w;
     CudaMatrixX<F> wff;
 
-    CudaVectorX<F> v;
     CudaVectorX<F> vthresh;
     CudaVectorX<F> vlongtrace;
     CudaVectorX<F> vpos;
@@ -73,7 +72,6 @@ cudaError_t cudaMalloc(MutableState<F,I>* s, CudaMutableState<F,I>* cs) {
     errRet( cudaMalloc(&s->w,&cs->w) );
     errRet( cudaMalloc(&s->wff,&cs->wff) );
     
-    errRet( cudaMalloc(&s->v,&cs->v) );
     errRet( cudaMalloc(&s->vthresh,&cs->vthresh) );
     errRet( cudaMalloc(&s->vlongtrace,&cs->vlongtrace) );
     errRet( cudaMalloc(&s->vpos,&cs->vpos) );
@@ -93,7 +91,6 @@ cudaError_t memcpyHostToDevice(MutableState<F,I>* s, CudaMutableState<F,I>* cs) 
     errRet( memcpyHostToDevice(&s->w,&cs->w) );
     errRet( memcpyHostToDevice(&s->wff,&cs->wff) );
 
-    errRet( memcpyHostToDevice(&s->v,&cs->v) );
     errRet( memcpyHostToDevice(&s->vthresh,&cs->vthresh) );
     errRet( memcpyHostToDevice(&s->vlongtrace,&cs->vlongtrace) );
     errRet( memcpyHostToDevice(&s->vpos,&cs->vpos) );
@@ -113,7 +110,6 @@ cudaError_t memcpyDeviceToHost(MutableState<F,I>* s, CudaMutableState<F,I>* cs) 
     errRet( memcpyDeviceToHost(&s->w,&cs->w) );
     errRet( memcpyDeviceToHost(&s->wff,&cs->wff) );
 
-    errRet( memcpyDeviceToHost(&s->v,&cs->v) );
     errRet( memcpyDeviceToHost(&s->vthresh,&cs->vthresh) );
     errRet( memcpyDeviceToHost(&s->vlongtrace,&cs->vlongtrace) );
     errRet( memcpyDeviceToHost(&s->vpos,&cs->vpos) );

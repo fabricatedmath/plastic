@@ -7,6 +7,7 @@
 #include "init.h"
 #include "loader.h"
 #include "dataset.h"
+#include "testing.h"
 #include <random>
 #include <boost/program_options.hpp>
 
@@ -17,122 +18,26 @@ using namespace Eigen;
 
 template<typename F, typename I>
 void run() {
-    MutableState<F,I> mutableState;
-    {
-        mutableState.w = Init<F,I>::initW();
-        mutableState.wff = Init<F,I>::initWff();
+    MutableState<F,I> ms = Init<F,I>::initMutableState();
+    StaticState<F,I> ss = Init<F,I>::initStaticState();
+    Buffers<F,I> b = Init<F,I>::initBuffers();
 
-        mutableState.v = Init<F,I>::initV();
-        mutableState.vthresh = Init<F,I>::initVThresh();
-        mutableState.vlongtrace = Init<F,I>::initVLongtrace();
-        mutableState.vpos = Init<F,I>::initVPos();
-        mutableState.vneg = Init<F,I>::initVNeg();
-
-        mutableState.xplastLat = Init<F,I>::initXPlastLat();
-        mutableState.xplastFF = Init<F,I>::initXPlastFF();
-
-        mutableState.wadap = Init<F,I>::initWadap();
-        mutableState.z = Init<F,I>::initZ();
-    }
-
-    StaticState<F,I> staticState;
-    {
-        staticState.input = Dataset<F>::retrieveTransformedDataset();
-        staticState.delays = Init<F,I>::initDelays();
-        staticState.altds = Init<F,I>::initALTDS();
-    }
-
-    Buffers<F,I> buffers;
-    {
-        buffers.incomingSpikes = Init<F,I>::initIncomingSpikes();
-        buffers.firings = Init<F,I>::initFirings();
-
-        buffers.lgnfirings = Init<F,I>::initLgnFiringsBuffer();
-        buffers.poissonNoise = Init<F,I>::initPoissonNoiseBuffer();
-        buffers.neuronInputs = Init<F,I>::initNeuronInputsBuffer();
-
-        buffers.eachNeurLTD = Init<F,I>::initEachNeurLTD();
-        buffers.eachNeurLTP = Init<F,I>::initEachNeurLTP();
-    }
-
-    run(mutableState, staticState, buffers);
+    run(ms, ss, b);
 }
 
 void runTesting(int i) {
-    MutableState<double,int> mutableState;
-    {
-        string is = "-" + to_string(i);
-        string isnext = "-" + to_string(i+1);
-        mutableState.w = loadMatrix<double>("data/w" + is);
-        mutableState.wff = loadMatrix<double>("data/wff" + is);
+    MutableState<double,int> ms = loadMutableState(i);
+    cout << ms.wadap.head(4).transpose() << endl;
 
-        mutableState.v = loadVector<double>("data/v" + is);
-        mutableState.vthresh = loadVector<double>("data/vthresh" + is);
-        mutableState.vlongtrace = loadVector<double>("data/vlongtrace" + is);
-        mutableState.vpos = loadVector<double>("data/vpos" + is);
-        mutableState.vneg = loadVector<double>("data/vneg" + is);
+    StaticState<double,int> ss = loadStaticState();
+    Buffers<double,int> b = Init<double,int>::initBuffers();
+    RandomHistorical<double> r = loadRandomHistorical();
 
-        mutableState.xplastLat = loadVector<double>("data/xplastLat" + is);
-        mutableState.xplastFF = loadVector<double>("data/xplastFF" + is);
+    ms = run(ms, ss, b, r);
+    cout << ms.wadap.head(4).transpose() << endl;
 
-        mutableState.wadap = loadVector<double>("data/wadap" + is);
-        mutableState.z = loadVector<double>("data/z" + is);
-
-        cout << "iff" << endl;
-        VectorX<double> iff = loadVector<double>("data/iff" + isnext);
-        cout << std::setprecision(15) << iff.head(10).transpose() << endl;
-
-        cout << "wff: " << mutableState.wff(0,0) << endl;
-
-        MatrixRX<double> wffRow = mutableState.wff.row(0).head(32);
-
-        VectorX<double> lgnfirings = loadVector<double>("data/lgnfirings" + isnext).head(32);
-
-        cout << "wffrow: " << wffRow.transpose() << endl;
-        cout << "lgnfirings: " << lgnfirings.transpose() << endl;
-        cout << "lgnfirings: " << lgnfirings(1) << endl;
-        cout << lgnfirings.size() << endl;
-
-        cout << std::setprecision(15) << (wffRow * lgnfirings).transpose() << endl;
-        cout << "ilat" << endl;
-        VectorX<double> ilat = loadVector<double>("data/ilat" + isnext);
-        cout << ilat.head(10).transpose() << endl;
-        VectorX<double> i = loadVector<double>("data/i" + isnext);
-        cout << i.head(10).transpose() << endl;
-
-    }
-
-
-
-    StaticState<double,int> staticState;
-    {
-        staticState.input = Dataset<double>::retrieveTransformedDataset();
-        staticState.delays = loadMatrix<int>("data/delays");
-        staticState.altds = loadMatrix<double>("data/altds");
-    }
-
-    Buffers<double,int> buffers;
-    {
-        buffers.incomingSpikes = Init<double,int>::initIncomingSpikes();
-        buffers.firings = Init<double,int>::initFirings();
-
-        buffers.lgnfirings = Init<double,int>::initLgnFiringsBuffer();
-        buffers.poissonNoise = Init<double,int>::initPoissonNoiseBuffer();
-        buffers.neuronInputs = Init<double,int>::initNeuronInputsBuffer();
-
-        buffers.eachNeurLTD = Init<double,int>::initEachNeurLTD();
-        buffers.eachNeurLTP = Init<double,int>::initEachNeurLTP();
-    }
-
-    RandomHistorical<double> randomHistorical;
-    {
-        randomHistorical.uniformMatrix = loadMatrix<double>("data/randlgnrates");
-        cout << randomHistorical.uniformMatrix.row(0).head(32).transpose() << endl;
-        randomHistorical.posPoissonMatrix = loadMatrix<unsigned int>("data/posnoise");
-        randomHistorical.negPoissonMatrix = loadMatrix<unsigned int>("data/negnoise");
-    }
-
-    run(mutableState, staticState, buffers, randomHistorical);
+    MutableState<double,int> msnext = loadMutableState(i+2);
+    cout << msnext.wadap.head(4).transpose() << endl;
 }
 
 int main(int argc, char* argv[]) {
