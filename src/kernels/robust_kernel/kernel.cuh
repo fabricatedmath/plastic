@@ -166,7 +166,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
 
                 /* PRE-SPIKE UPDATE */
                 
-                F input = b.neuronInputs.data[id];
+                const F input = b.neuronInputs.data[id];
                 if (id == 0) {
                     printf("input: %.15f\n", input);
                 }
