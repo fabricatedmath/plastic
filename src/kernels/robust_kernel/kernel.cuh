@@ -100,10 +100,9 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
         if (inputRow > numInputRows) {
             inputRow = 0;
         }
+        
         cg::sync(grid);
-        
         fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, b.incomingSpikes, b.firings, rgen, inputRow);
-        
         cg::sync(grid);
 
         F v = ELEAK;
@@ -115,31 +114,18 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 if (numStepsThisPres < NBSTEPSSTIM) {
                     iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
                 }
-                /*
-                if (tid == 0 && row == 0 && numStepsThisPres == 0) {
-                    printf("iff: %d : %.15f\n", inputRow, iff);
-                }
-                */
 
                 const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, b.incomingSpikes, b.firings, ss.delays, row);
-                /*
-                if (tid == 0 && row == 0 && numStepsThisPres == 0) {
-                    printf("ilat: %d : %.15f\n", inputRow, ilat);
-                    }*/
-
+                
                 if (tid == 0) {
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);
-                    const F noise = noiseRowPtr[row];
+                    const I noise = noiseRowPtr[row];
                     const F input = iff + ilat + noise;
-                    if (blockIdx.x == 0) {
-                        printf("this input: %.15f\n", input);
-                    }
-                    //printf("input: %d : %.15f\n", blockIdx.x, input);
-                    b.neuronInputs.data[row] = input;
-                    if (blockIdx.x == 0) {
-                        printf("this input: %.15f\n", b.neuronInputs.data[row]);
-                    }
+
+                    volatile F* neuronInputs = b.neuronInputs.data;
+                    neuronInputs[row] = input;
                 }
+                __threadfence();
                 cg::sync(block);
             }
             /* Sync blocks from Input calculation */
@@ -165,16 +151,11 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 vpos = vpos + (DT / TAUVPOS) * (vprev - vpos);
 
                 /* PRE-SPIKE UPDATE */
-                
-                const F input = b.neuronInputs.data[id];
-                if (id == 0) {
-                    printf("input: %.15f\n", input);
-                }
+
+                const volatile F* neuronInputs = b.neuronInputs.data;
+                const F input = neuronInputs[id];
+
                 v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
-                if (id == 0) {
-                    printf("input: %.15f\n", input);
-                    printf("v: %.15f\n", v);                    
-                }
 
                 if (isSpiking > 1) {
                     v = VPEAK-0.001;

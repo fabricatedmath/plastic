@@ -37,7 +37,10 @@ void runTesting(int i) {
     cout << ms.wadap.head(4).transpose() << endl;
 
     MutableState<double,int> msnext = loadMutableState(i+2);
+    VectorX<double> input = loadInput(i+2);
+
     cout << msnext.wadap.head(4).transpose() << endl;
+    cout << input.head(4).transpose() << endl;
 }
 
 int main(int argc, char* argv[]) {
