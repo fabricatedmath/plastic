@@ -100,6 +100,8 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
         if (inputRow > numInputRows) {
             inputRow = 0;
         }
+        cg::sync(grid);
+        
         fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, b.incomingSpikes, b.firings, rgen, inputRow);
         
         cg::sync(grid);
@@ -113,13 +115,24 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 if (numStepsThisPres < NBSTEPSSTIM) {
                     iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
                 }
+                /*
+                if (tid == 0 && row == 0 && numStepsThisPres == 0) {
+                    printf("iff: %d : %.15f\n", inputRow, iff);
+                }
+                */
 
                 const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, b.incomingSpikes, b.firings, ss.delays, row);
+                /*
+                if (tid == 0 && row == 0 && numStepsThisPres == 0) {
+                    printf("ilat: %d : %.15f\n", inputRow, ilat);
+                    }*/
 
                 if (tid == 0) {
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);
                     const F noise = noiseRowPtr[row];
-                    b.neuronInputs.data[row] = iff + ilat + noise;
+                    const F input = iff + ilat + noise;
+                    //printf("input: %d : %.15f\n", blockIdx.x, input);
+                    b.neuronInputs.data[row] = input;
                 }
             }
             /* Sync blocks from Input calculation */
@@ -179,57 +192,69 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 vthresh = vthresh + (DT / TAUVTHRESH) * (-1.0 * vthresh + VTREST);
             }
 
-            /* PLASTICITY */
-            if (id < NBE) {
-                b.eachNeurLTD.data[id] = DT * (-altds / VREF2) * vlongtrace * vlongtrace * max(0.0,vneg - THETAVNEG);
-                b.eachNeurLTP.data[id] = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
-            }
-
-            cg::sync(grid);
-
-            for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
-                const F neurLTP = b.eachNeurLTP.data[row];
-                const F neurLTD = b.eachNeurLTD.data[row];
-
-                const I* rowLgnFirings = b.lgnfirings.getRowPtr(numStepsThisPres);
-                F* rowWff = ms.wff.getRowPtr(row);
-                
-                for (int i = tid; i < FFRFSIZE; i += block.size()) {
-                    const F xplastFF = ms.xplastFF.data[i];
-                    I lgnfirings = 0;
-                    if (numStepsThisPres < NBSTEPSSTIM) {
-                        lgnfirings = rowLgnFirings[i];
-                    }
-                    F wff = rowWff[i];
-                    wff = wff + xplastFF * neurLTP;
-                    wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
-                    wff = min(MAXW,max(0.0,wff));
-                    rowWff[i] = wff;
+            const bool doPlasticity = false;
+            if (doPlasticity) {
+                /* PLASTICITY */
+                if (id < NBE) {
+                    b.eachNeurLTD.data[id] = DT * (-altds / VREF2) * vlongtrace * vlongtrace * max(0.0,vneg - THETAVNEG);
+                    b.eachNeurLTP.data[id] = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
                 }
 
-                F* rowW = ms.w.getRowPtr(row);
-                for (int i = tid; i < NBE; i += block.size()) {
-                    const F xplastLat = ms.xplastLat.data[i];    
-                    const I firing = b.firings.data[i];
-                    F w = rowW[i];
-                    w = w + xplastLat * neurLTP;
-                    w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
-                    if (row == i) {
-                        w = 0.0;
+                cg::sync(grid);
+
+                for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
+                    const F neurLTP = b.eachNeurLTP.data[row];
+                    const F neurLTD = b.eachNeurLTD.data[row];
+
+                    const I* rowLgnFirings = b.lgnfirings.getRowPtr(numStepsThisPres);
+                    F* rowWff = ms.wff.getRowPtr(row);
+
+                    for (int i = tid; i < FFRFSIZE; i += block.size()) {
+                        const F xplastFF = ms.xplastFF.data[i];
+                        I lgnfirings = 0;
+                        if (numStepsThisPres < NBSTEPSSTIM) {
+                            lgnfirings = rowLgnFirings[i];
+                        }
+                        F wff = rowWff[i];
+                        wff = wff + xplastFF * neurLTP;
+                        wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
+                        wff = min(MAXW,max(0.0,wff));
+                        rowWff[i] = wff;
                     }
-                    if (i < NBE) {
-                        //Excitory Pruning
-                        w = max(0.0,w);
-                    } else {
-                        // Inhibitory Pruning
-                        w = min(0.0,w);
+
+                    F* rowW = ms.w.getRowPtr(row);
+                    for (int i = tid; i < NBE; i += block.size()) {
+                        const F xplastLat = ms.xplastLat.data[i];    
+                        const I firing = b.firings.data[i];
+                        F w = rowW[i];
+                        w = w + xplastLat * neurLTP;
+                        w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
+                        if (row == i) {
+                            w = 0.0;
+                        }
+                        if (i < NBE) {
+                            //Excitory Pruning
+                            w = max(0.0,w);
+                        } else {
+                            // Inhibitory Pruning
+                            w = min(0.0,w);
+                        }
+                        w = min(MAXW,w);
+                        rowW[i] = w;
                     }
-                    w = min(MAXW,w);
-                    rowW[i] = w;
                 }
             }
-            
-            cg::sync(grid);
+
+            ms.vthresh.data[id] = vthresh;
+            ms.vlongtrace.data[id] = vlongtrace;
+            ms.vneg.data[id] = vneg;
+            ms.vpos.data[id] = vpos;
+
+            ms.wadap.data[id] = wadap;
+            ms.z.data[id] = z;
+
+            ms.xplastLat.data[id] = xplastLat;
+            ms.xplastFF.data[id] = xplastFF;   
         }
     }
     unsigned long long endTime = clock64();

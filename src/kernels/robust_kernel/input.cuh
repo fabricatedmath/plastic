@@ -14,14 +14,15 @@ __device__ F computeIFFNeuron
     const unsigned int tid,
     CudaMatrixX<F> wff,
     CudaMatrixX<I> lgnFiringsBuffer,
-    const int inputRow,
+    const int numStepsThisPres,
     const int row
 )
 {
     F acc = 0;
 
-    const I* rowLgnFirings = lgnFiringsBuffer.getRowPtr(inputRow);
+    const I* rowLgnFirings = lgnFiringsBuffer.getRowPtr(numStepsThisPres);
     const F* rowWff = wff.getRowPtr(row);
+    
     #pragma unroll
     for (int i = tid; i < FFRFSIZE; i += block.size()) {
         const I a = rowLgnFirings[i];
@@ -40,7 +41,7 @@ __device__ F computeIFFNeuron
     sdata[tid] = acc;
 
     cg::sync(block);
-    
+
     if (block.thread_rank() == 0) {
         acc = 0;
         #pragma unroll

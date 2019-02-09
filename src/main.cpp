@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <Eigen/Dense>
 #include "eigen_boost_serialization.hpp"
 #include "state.h"
@@ -61,6 +62,7 @@ void runTesting(int i) {
     MutableState<double,int> mutableState;
     {
         string is = "-" + to_string(i);
+        string isnext = "-" + to_string(i+1);
         mutableState.w = loadMatrix<double>("data/w" + is);
         mutableState.wff = loadMatrix<double>("data/wff" + is);
 
@@ -75,7 +77,32 @@ void runTesting(int i) {
 
         mutableState.wadap = loadVector<double>("data/wadap" + is);
         mutableState.z = loadVector<double>("data/z" + is);
+
+        cout << "iff" << endl;
+        VectorX<double> iff = loadVector<double>("data/iff" + isnext);
+        cout << std::setprecision(15) << iff.head(10).transpose() << endl;
+
+        cout << "wff: " << mutableState.wff(0,0) << endl;
+
+        MatrixRX<double> wffRow = mutableState.wff.row(0).head(32);
+
+        VectorX<double> lgnfirings = loadVector<double>("data/lgnfirings" + isnext).head(32);
+
+        cout << "wffrow: " << wffRow.transpose() << endl;
+        cout << "lgnfirings: " << lgnfirings.transpose() << endl;
+        cout << "lgnfirings: " << lgnfirings(1) << endl;
+        cout << lgnfirings.size() << endl;
+
+        cout << std::setprecision(15) << (wffRow * lgnfirings).transpose() << endl;
+        cout << "ilat" << endl;
+        VectorX<double> ilat = loadVector<double>("data/ilat" + isnext);
+        cout << ilat.head(10).transpose() << endl;
+        VectorX<double> i = loadVector<double>("data/i" + isnext);
+        cout << i.head(10).transpose() << endl;
+
     }
+
+
 
     StaticState<double,int> staticState;
     {
@@ -100,6 +127,7 @@ void runTesting(int i) {
     RandomHistorical<double> randomHistorical;
     {
         randomHistorical.uniformMatrix = loadMatrix<double>("data/randlgnrates");
+        cout << randomHistorical.uniformMatrix.row(0).head(32).transpose() << endl;
         randomHistorical.posPoissonMatrix = loadMatrix<unsigned int>("data/posnoise");
         randomHistorical.negPoissonMatrix = loadMatrix<unsigned int>("data/negnoise");
     }

@@ -64,9 +64,9 @@ void wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffe
 
     cout << "Num Blocks Used: " << numBlocks << endl << endl;
 
-    int inputRow = 0;
+    int inputRow = 402;
     int numInputRows = 110000;
-    int numPresThisLaunch = 1;
+    int numPresThisLaunch = 100;
 
     void *kernelArgs[] = {
         (void*)&cudaMutableState,
