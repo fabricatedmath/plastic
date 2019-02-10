@@ -120914,3 +120914,5 @@ Clocks: 20342913
                    0                    0                    0 2.54484860531222e-13 2.54484860531222e-13 2.54484860531222e-13 2.54484421816775e-13 2.54484530236992e-13 2.54484860531222e-13 2.54484860531222e-13 2.54484860531222e-13 2.54484862273908e-13 2.54484882602699e-13 2.54484936812807e-13 2.54484801287536e-13 2.54484692867318e-13 2.54484801287536e-13 2.54484841945117e-13 2.54484860531222e-13 2.54484860531222e-13
 xplast err+: 2.54485072338079e-13 @ 134
 xplast err-: 0 @ 0
+nvcc -lineinfo -rdc=true -Xptxas -v --expt-relaxed-constexpr -Ieigen-git-mirror/ -Iinclude/ -M -MT obj/src/test.cu.o src/test.cu > obj/src/test.cu.d
+g++ -std=c++17 -Ieigen-git-mirror/ -Iinclude/ -MM -MT obj/src/main.o src/main.cpp -MF obj/src/main.d

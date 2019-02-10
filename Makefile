@@ -8,6 +8,9 @@ NVCC := nvcc
 INCLUDES = -Ieigen-git-mirror/ -Iinclude/
 NVCCINCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
+#DEFINES =
+DEFINES = -DNBE=2 -DNBI=1 -DNBSTEPSPERPRES=10 -DNUMPRESTHISLAUNCH=1
+
 NVCCFLAGS = -lineinfo -rdc=true -Xptxas -v --expt-relaxed-constexpr
 
 ALL_CCFLAGS += -dc #-Xptxas -dlcm=cg
@@ -50,11 +53,11 @@ $(CUDA_DEPS): $(OBJDIR)/%.cu.d : %.cu
 	$(NVCC) $(NVCCFLAGS) $(NVCCINCLUDES) -M -MT $(OBJDIR)/$*.cu.o $< > $@
 
 $(OBJECTS): $(OBJDIR)/%.o : %.cpp $(OBJDIR)/%.d
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(DEFINES) -c $< -o $@
 
 $(CUDA_OBJECTS): $(OBJDIR)/%.cu.o : %.cu $(OBJDIR)/%.cu.d
 	@mkdir -p $(dir $@)
-	$(NVCC) $(NVCCFLAGS) $(NVCCINCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) $(DEFINES) $(NVCCINCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
 	$(NVCC) $(GENCODE_FLAGS) -dlink -o $(OBJDIR)/$*_link.cu.o $@ -lcudart -lcudadevrt
 
 $(TARGET): $(OBJECTS) $(CUDA_OBJECTS) Makefile

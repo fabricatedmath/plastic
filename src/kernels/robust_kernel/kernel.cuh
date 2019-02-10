@@ -14,7 +14,7 @@ __device__ void fillBuffers
     CudaMatrixX<I> incomingSpikes,
     CudaVectorX<I> firingsV,
     Rgen rgen,
-    int inputRow
+    const int inputRow
 )
 {
     const unsigned int tid = threadIdx.x;
@@ -60,7 +60,14 @@ __device__ void fillBuffers
 }
 
 template <typename F, typename I, class p, typename std::enable_if<std::is_same<p, plasticity>::value>::type* = nullptr>
-inline __device__ void doPlasticity(CudaMutableState<F,I> ms, CudaBuffers<F,I> b, int numStepsThisPres, int tid, cg::thread_block block) {
+inline __device__ void doPlasticity
+(
+     CudaMutableState<F,I> ms,
+     CudaBuffers<F,I> b,
+     const int numStepsThisPres,
+     const int tid,
+     const cg::thread_block block
+) {
     for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
         const F neurLTP = b.eachNeurLTP.data[row];
         const F neurLTD = b.eachNeurLTD.data[row];
@@ -105,7 +112,14 @@ inline __device__ void doPlasticity(CudaMutableState<F,I> ms, CudaBuffers<F,I> b
 }
 
 template <typename F, typename I, class p, typename std::enable_if<std::is_same<p, noplasticity>::value>::type* = nullptr>
-inline __device__ void doPlasticity(CudaMutableState<F,I> ms, CudaBuffers<F,I> b, int numStepsThisPres, int tid, cg::thread_block block) {}
+inline __device__ void doPlasticity
+(
+    CudaMutableState<F,I> ms,
+    CudaBuffers<F,I> b,
+    const int numStepsThisPres,
+    const int tid,
+    const cg::thread_block block
+) {}
 
 template <typename F, typename I, typename Rgen, int numThreads, class p>
 __global__ void test_kernel(CudaMutableState<F,I> ms,
@@ -117,9 +131,9 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                             const int numPresThisLaunch,
                             unsigned long long* time) {
     const unsigned long long startTime = clock64();
-    cg::thread_block block = cg::this_thread_block();
-    cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(block);
-    cg::grid_group grid = cg::this_grid();
+    const cg::thread_block block = cg::this_thread_block();
+    const cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(block);
+    const cg::grid_group grid = cg::this_grid();
     const unsigned int tid = block.thread_rank();
 
     const int ffrfBlockOffset = NBNEUR / NUMTHREADS + 1;
@@ -254,7 +268,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
 
             cg::sync(grid);
 
-            doPlasticity<F,I,p>(ms, b, numStepsThisPres, tid, block);
+            //doPlasticity<F,I,p>(ms, b, numStepsThisPres, tid, block);
             
             const bool doPlasticity = false;
             if (doPlasticity) {

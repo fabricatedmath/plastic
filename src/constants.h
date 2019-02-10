@@ -1,11 +1,22 @@
 #pragma once
 
+//Control
+#ifndef NUMPRESTHISLAUNCH
+#define NUMPRESTHISLAUNCH 100
+#endif
+
+//Simulation
 #define WFFINITMIN 0.0
 #define WFFINITMAX 0.1
 #define MAXW 50.0
 
-#define NBE 2
-#define NBI 1
+#ifndef NBE
+#define NBE 100
+#endif
+
+#ifndef NBI
+#define NBI 20
+#endif
 
 #define NBNEUR (NBE + NBI)
 
@@ -24,7 +35,10 @@
 #define DT 1.0
 #define INPUTMULT ((DT / 1000.0) * 150.0 * 2.0)
 
+#ifndef NBSTEPSPERPRES
 #define NBSTEPSPERPRES 350
+#endif
+
 #define TIMEZEROINPUT 100
 #define NBSTEPSSTIM (NBSTEPSPERPRES - TIMEZEROINPUT)
 
