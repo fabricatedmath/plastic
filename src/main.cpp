@@ -45,18 +45,36 @@ void runTesting(int iter) {
     }
 
     MutableState<double,int> msnext = loadMutableState(iter+numRuns);
-    cout << std::setprecision(15) << ms.wadap.transpose() << endl;
-    cout << std::setprecision(15) << msnext.wadap.transpose() << endl;
 
-    cout << std::setprecision(15) << ms.xplastLat.transpose() << endl;
-    cout << std::setprecision(15) << msnext.xplastLat.transpose() << endl;
 
-    cout << std::setprecision(15) << ms.xplastFF.head(10).transpose() << endl;
-    cout << std::setprecision(15) << msnext.xplastFF.head(10).transpose() << endl;
+    cout << std::setprecision(15);
 
     int i;
+
+    cout << "wadap err+: " << (ms.wadap - msnext.wadap).maxCoeff(&i) << " @ " << i << endl;
+    cout << "wadap err+: " << (ms.wadap - msnext.wadap).minCoeff(&i) << " @ " << i << endl;
+    cout << endl;
+
     cout << "xplastff err+: " << (ms.xplastFF - msnext.xplastFF).maxCoeff(&i) << " @ " << i << endl;
     cout << "xplastff err-: " << (ms.xplastFF - msnext.xplastFF).minCoeff(&i) << " @ " << i << endl;
+    cout << endl;
+
+    cout << "xplastlat err+: " << (ms.xplastLat - msnext.xplastLat).maxCoeff(&i) << " @ " << i << endl;
+    cout << "xplastlat err-: " << (ms.xplastLat - msnext.xplastLat).minCoeff(&i) << " @ " << i << endl;
+    cout << endl;
+
+    VectorX<double> neurLTD = loadNeurLTD(iter+numRuns);
+
+    cout << "neurLTD err+: " << (b.eachNeurLTD - neurLTD).maxCoeff(&i) << " @ " << i << endl;
+    cout << "neurLTD err-: " << (b.eachNeurLTD - neurLTD).minCoeff(&i) << " @ " << i << endl;
+    cout << endl;
+
+
+    VectorX<double> neurLTP = loadNeurLTP(iter+numRuns);
+
+    cout << "neurLTP err+: " << (b.eachNeurLTP - neurLTP).maxCoeff(&i) << " @ " << i << endl;
+    cout << "neurLTP err-: " << (b.eachNeurLTP - neurLTP).minCoeff(&i) << " @ " << i << endl;
+    cout << endl;
 
     //cout << b.lgnfirings << endl;
     for (int i = 1; i < 251; i++) {

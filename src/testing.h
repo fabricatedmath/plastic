@@ -46,32 +46,37 @@ RandomHistorical<double> loadRandomHistorical() {
 
 VectorX<double> loadV(int i) {
     const string is = "-" + to_string(i);
-
     return loadVector<double>("data/v" + is);
 }
 
 VectorX<double> loadIff(int i) {
     const string is = "-" + to_string(i);
-
     return loadVector<double>("data/iff" + is);
 }
 
 VectorX<double> loadIlat(int i) {
     const string is = "-" + to_string(i);
-
     return loadVector<double>("data/ilat" + is);
 }
 
 VectorX<double> loadInput(int i) {
     const string is = "-" + to_string(i);
-
     return loadVector<double>("data/i" + is);
 }
 
 MatrixRX<double> loadLgnfirings(int i) {
     const string is = "-" + to_string(i);
-
     return loadMatrix<double>("data/lgnfirings" + is);
+}
+
+VectorX<double> loadNeurLTD(int i) {
+    const string is = "-" + to_string(i);
+    return loadVector<double>("data/neurLTD" + is);
+}
+
+VectorX<double> loadNeurLTP(int i) {
+    const string is = "-" + to_string(i);
+    return loadVector<double>("data/neurLTP" + is);
 }
 
 void print(int iter) {

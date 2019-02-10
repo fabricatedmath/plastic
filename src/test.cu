@@ -34,7 +34,7 @@ int calcNumBlocksNeeded(int numBlocks) {
 template<typename F, typename I>
 std::tuple<MutableState<F,I>,Buffers<F,I>> run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers) {
     typedef RandomGen<F,curandState> Rgen;
-    auto func = test_kernel<F,I,Rgen,numThreads>;
+    auto func = test_kernel<F,I,Rgen,numThreads,noplasticity>;
     int numBlocks = printSetBlockGridStats(func, numThreads);
     numBlocks = calcNumBlocksNeeded(numBlocks);
     Rgen cudaRgen(numBlocks, numThreads, POSNOISERATE, NEGNOISERATE);
@@ -44,7 +44,7 @@ std::tuple<MutableState<F,I>,Buffers<F,I>> run(MutableState<F,I> mutableState, S
 template<typename F, typename I>
 std::tuple<MutableState<F,I>,Buffers<F,I>> run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, RandomHistorical<F> randomHistorical) {
     typedef RandomGenHistorical<F> Rgen;
-    auto func = test_kernel<F,I,Rgen,numThreads>;
+    auto func = test_kernel<F,I,Rgen,numThreads,noplasticity>;
     int numBlocks = printSetBlockGridStats(func, numThreads);
     numBlocks = calcNumBlocksNeeded(numBlocks);
     Rgen cudaRgen(randomHistorical);

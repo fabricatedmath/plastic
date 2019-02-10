@@ -2,6 +2,9 @@
 
 #include "input.cuh"
 
+enum plasticity {};
+enum noplasticity {};
+
 template<typename F, typename I, typename Rgen>
 __device__ void fillBuffers
 (
@@ -56,8 +59,55 @@ __device__ void fillBuffers
     rgen.put(id,g);
 }
 
+template <typename F, typename I, class p, typename std::enable_if<std::is_same<p, plasticity>::value>::type* = nullptr>
+inline __device__ void doPlasticity(CudaMutableState<F,I> ms, CudaBuffers<F,I> b, int numStepsThisPres, int tid, cg::thread_block block) {
+    for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
+        const F neurLTP = b.eachNeurLTP.data[row];
+        const F neurLTD = b.eachNeurLTD.data[row];
+        
+        const I* rowLgnFirings = b.lgnfirings.getRowPtr(numStepsThisPres);
+        F* rowWff = ms.wff.getRowPtr(row);
+        
+        for (int i = tid; i < FFRFSIZE; i += block.size()) {
+            const F xplastFF = ms.xplastFF.data[i];
+            I lgnfirings = 0;
+            if (numStepsThisPres < NBSTEPSSTIM) {
+                lgnfirings = rowLgnFirings[i];
+            }
+            F wff = rowWff[i];
+            wff = wff + xplastFF * neurLTP;
+            wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
+            wff = min(MAXW,max(0.0,wff));
+            rowWff[i] = wff;
+        }
+        
+        F* rowW = ms.w.getRowPtr(row);
+        for (int i = tid; i < NBE; i += block.size()) {
+            const F xplastLat = ms.xplastLat.data[i];    
+            const I firing = b.firings.data[i];
+            F w = rowW[i];
+            w = w + xplastLat * neurLTP;
+            w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
+            if (row == i) {
+                w = 0.0;
+            }
+            if (i < NBE) {
+                //Excitory Pruning
+                w = max(0.0,w);
+            } else {
+                // Inhibitory Pruning
+                w = min(0.0,w);
+            }
+            w = min(MAXW,w);
+            rowW[i] = w;
+        }
+    }
+}
 
-template <typename F, typename I, typename Rgen, int numThreads>
+template <typename F, typename I, class p, typename std::enable_if<std::is_same<p, noplasticity>::value>::type* = nullptr>
+inline __device__ void doPlasticity(CudaMutableState<F,I> ms, CudaBuffers<F,I> b, int numStepsThisPres, int tid, cg::thread_block block) {}
+
+template <typename F, typename I, typename Rgen, int numThreads, class p>
 __global__ void test_kernel(CudaMutableState<F,I> ms,
                             CudaStaticState<F,I> ss,
                             CudaBuffers<F,I> b,
@@ -73,26 +123,26 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
     const unsigned int tid = block.thread_rank();
 
     const int ffrfBlockOffset = NBNEUR / NUMTHREADS + 1;
-    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    const int nid = threadIdx.x + blockDim.x * blockIdx.x;
 
     F vthresh, vlongtrace, vneg, vpos;
     F wadap, z, xplastLat, xplastFF;
     
     F altds;
 
-    if (id < NBNEUR) {
-        vthresh = ms.vthresh.data[id];
-        vlongtrace = ms.vlongtrace.data[id];
-        vneg = ms.vneg.data[id];
-        vpos = ms.vpos.data[id];
+    if (nid < NBNEUR) {
+        vthresh = ms.vthresh.data[nid];
+        vlongtrace = ms.vlongtrace.data[nid];
+        vneg = ms.vneg.data[nid];
+        vpos = ms.vpos.data[nid];
         
-        wadap = ms.wadap.data[id];
-        z = ms.z.data[id];
+        wadap = ms.wadap.data[nid];
+        z = ms.z.data[nid];
         
-        xplastLat = ms.xplastLat.data[id];
-        xplastFF = ms.xplastFF.data[id];
+        xplastLat = ms.xplastLat.data[nid];
+        xplastFF = ms.xplastFF.data[nid];
         
-        altds = ss.altds.data[id];
+        altds = ss.altds.data[nid];
     }
 
     inputRow--;
@@ -107,7 +157,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
 
         F v = ELEAK;
         int isSpiking = 0;
-        for (int numStepsThisPres = 0; numStepsThisPres < 350; numStepsThisPres++) {
+        for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
             /*
             if (id == 0) {
                 printf("\nnumpres: %d\n\n", numStepsThisPres);
@@ -147,13 +197,10 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 }
                 xplastFF = xplastFF + lgnfirings / TAUXPLAST - (DT / TAUXPLAST) * xplastFF;
                 ms.xplastFF.data[fid] = xplastFF;
-                if (fid == 326) {
-                    printf("%d : %.15f\n", numStepsThisPres, xplastFF);
-                }
             }
 
-            //const int nid = threadIdx.x + blockDim.x * blockIdx.x;
-            if (id < NBNEUR) {
+
+            if (nid < NBNEUR) {
                 {
                     const F vprev = v;
                     vlongtrace = vlongtrace + (DT / TAUVLONGTRACE) * (max(0.0,(vprev - THETAVLONGTRACE)) - vlongtrace);
@@ -164,7 +211,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 /* PRE-SPIKE UPDATE */
 
                 const volatile F* neuronInputs = b.neuronInputs.data;
-                const F input = neuronInputs[id];
+                const F input = neuronInputs[nid];
 
                 v += (DT/CONSTC) * (-GLEAK * (v - ELEAK) + GLEAK * DELTAT * expf((v-vthresh) / DELTAT) + z - wadap) + input;
 
@@ -191,24 +238,27 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 }
                 xplastLat = xplastLat + firing / TAUXPLAST - (DT / TAUXPLAST) * xplastLat;
                 int* firings = b.firings.data;
-                firings[id] = firing;
-                ms.xplastLat.data[id] = xplastLat;
+                firings[nid] = firing;
+                ms.xplastLat.data[nid] = xplastLat;
 
                 /* POST-SPIKE UPDATE */
                 wadap = wadap + (DT / TAUADAP) * (CONSTA * (v - ELEAK) - wadap);
                 z = z + (DT / TAUZ) * (-1.0) * z;
                 vthresh = vthresh + (DT / TAUVTHRESH) * (-1.0 * vthresh + VTREST);
             }
+            
+            if (nid < NBE) {
+                b.eachNeurLTD.data[nid] = DT * (-altds / VREF2) * vlongtrace * vlongtrace * max(0.0,vneg - THETAVNEG);
+                b.eachNeurLTP.data[nid] = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
+            }
 
+            cg::sync(grid);
+
+            doPlasticity<F,I,p>(ms, b, numStepsThisPres, tid, block);
+            
             const bool doPlasticity = false;
             if (doPlasticity) {
                 /* PLASTICITY */
-                if (id < NBE) {
-                    b.eachNeurLTD.data[id] = DT * (-altds / VREF2) * vlongtrace * vlongtrace * max(0.0,vneg - THETAVNEG);
-                    b.eachNeurLTP.data[id] = DT * ALTP * ALTPMULT * max(0.0, vpos - THETAVNEG) * max(0.0, v - THETAVPOS);
-                }
-
-                cg::sync(grid);
 
                 for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
                     const F neurLTP = b.eachNeurLTP.data[row];
@@ -254,21 +304,22 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
             }
         }
 
-        if (id < NBNEUR) {
-            ms.vthresh.data[id] = vthresh;
-            ms.vlongtrace.data[id] = vlongtrace;
-            ms.vneg.data[id] = vneg;
-            ms.vpos.data[id] = vpos;
+        if (nid < NBNEUR) {
+            ms.vthresh.data[nid] = vthresh;
+            ms.vlongtrace.data[nid] = vlongtrace;
+            ms.vneg.data[nid] = vneg;
+            ms.vpos.data[nid] = vpos;
             
-            ms.wadap.data[id] = wadap;
-            ms.z.data[id] = z;
+            ms.wadap.data[nid] = wadap;
+            ms.z.data[nid] = z;
             
-            ms.xplastLat.data[id] = xplastLat;
-            ms.xplastFF.data[id] = xplastFF;
+            ms.xplastLat.data[nid] = xplastLat;
+            ms.xplastFF.data[nid] = xplastFF;
         }
     }
     unsigned long long endTime = clock64();
-    if (id == 0) {
+    if (nid == 0) {
         *time = (endTime - startTime);
     }   
 }
+
