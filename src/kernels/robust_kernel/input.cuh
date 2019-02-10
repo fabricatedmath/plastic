@@ -60,7 +60,7 @@ __device__ F computeILATNeuron
     const unsigned int tid,
     CudaMatrixX<F> w,
     CudaMatrixX<I> incomingSpikes,
-    CudaVectorX<I> firings,
+    CudaVectorX<I> firingsV,
     CudaMatrixX<I> delays,
     const int row
 )
@@ -77,7 +77,8 @@ __device__ F computeILATNeuron
         
         if (i != row) {
             const I delay = delaysRow[i];
-            const I firing = firings.data[i];
+            const I* firings = firingsV.data;
+            const I firing = firings[i];
             incomingSpike = incomingSpike | (firing << (delay-1));
         }
 
@@ -88,7 +89,7 @@ __device__ F computeILATNeuron
             acc += wVal;
         }
     }
-    
+
     cg::sync(block);
 
     #pragma unroll

@@ -22,28 +22,37 @@ namespace cg = cooperative_groups;
 
 const int numThreads = NUMTHREADS;
 
+int calcNumBlocksNeeded(int numBlocks) {
+    int numBlocksForNeurons = NBNEUR / NUMTHREADS + 1;
+    int numBlocksForFFRF = FFRFSIZE / NUMTHREADS + 1;
+    int minBlocks = numBlocksForNeurons + numBlocksForFFRF;
+    numBlocks = min(NBNEUR,numBlocks);
+    numBlocks = max(minBlocks,numBlocks);
+    return numBlocks;
+}
+
 template<typename F, typename I>
-MutableState<F,I> run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers) {
+std::tuple<MutableState<F,I>,Buffers<F,I>> run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers) {
     typedef RandomGen<F,curandState> Rgen;
     auto func = test_kernel<F,I,Rgen,numThreads>;
     int numBlocks = printSetBlockGridStats(func, numThreads);
-    numBlocks = min(NBNEUR,numBlocks);
+    numBlocks = calcNumBlocksNeeded(numBlocks);
     Rgen cudaRgen(numBlocks, numThreads, POSNOISERATE, NEGNOISERATE);
     return wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
 }
 
 template<typename F, typename I>
-MutableState<F,I> run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, RandomHistorical<F> randomHistorical) {
+std::tuple<MutableState<F,I>,Buffers<F,I>> run(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, RandomHistorical<F> randomHistorical) {
     typedef RandomGenHistorical<F> Rgen;
     auto func = test_kernel<F,I,Rgen,numThreads>;
     int numBlocks = printSetBlockGridStats(func, numThreads);
-    numBlocks = min(NBNEUR,numBlocks);
+    numBlocks = calcNumBlocksNeeded(numBlocks);
     Rgen cudaRgen(randomHistorical);
     return wrapper(mutableState, staticState, buffers, func, cudaRgen, numBlocks);
 }
 
 template<class T, typename F, typename I, typename Rgen>
-MutableState<F,I> wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, T func, Rgen cudaRgen, const int numBlocks) {
+std::tuple<MutableState<F,I>,Buffers<F,I>> wrapper(MutableState<F,I> mutableState, StaticState<F,I> staticState, Buffers<F,I> buffers, T func, Rgen cudaRgen, const int numBlocks) {
     unsigned long long time;
     unsigned long long* d_time;
     gpuErrchk( cudaMalloc(&d_time, sizeof(unsigned long long)) );
@@ -98,18 +107,18 @@ MutableState<F,I> wrapper(MutableState<F,I> mutableState, StaticState<F,I> stati
         cout << "Clocks: " << time << endl << endl;
     }
 
-    return mutableState;
+    return std::make_tuple(mutableState,buffers);
 }
 
-template MutableState<float,int>
+template std::tuple<MutableState<float,int>,Buffers<float,int>>
 run<float,int>(MutableState<float,int> mutableState, StaticState<float,int> staticState, Buffers<float,int> buffers);
 
-template MutableState<double,int>
+template std::tuple<MutableState<double,int>,Buffers<double,int>>
 run<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers);
 
-template MutableState<float,int>
+template std::tuple<MutableState<float,int>,Buffers<float,int>>
 run<float,int>(MutableState<float,int> mutableState, StaticState<float,int> staticState, Buffers<float,int> buffers, RandomHistorical<float> randomHistorical);
 
-template MutableState<double,int>
+template std::tuple<MutableState<double,int>,Buffers<double,int>>
 run<double,int>(MutableState<double,int> mutableState, StaticState<double,int> staticState, Buffers<double,int> buffers, RandomHistorical<double> randomHistorical);
 

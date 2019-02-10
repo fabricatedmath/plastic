@@ -9,7 +9,7 @@ __device__ void fillBuffers
     CudaMatrixX<I> lgnfirings,
     CudaMatrixX<I> poissonNoise,
     CudaMatrixX<I> incomingSpikes,
-    CudaVectorX<I> firings,
+    CudaVectorX<I> firingsV,
     Rgen rgen,
     int inputRow
 )
@@ -18,7 +18,7 @@ __device__ void fillBuffers
 
     //Clear incoming spikes
     for (int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
-        I* incomingSpikesRowPtr = incomingSpikes.getRowPtr(row);
+        volatile I* incomingSpikesRowPtr = incomingSpikes.getRowPtr(row);
         for (int i = tid; i < NBNEUR; i += blockDim.x) {
             incomingSpikesRowPtr[i] = 0;
         }
@@ -26,7 +26,8 @@ __device__ void fillBuffers
 
     if (blockIdx.x == 0) {
         for (int i = tid; i < NBNEUR; i+= blockDim.x) {
-            firings.data[i] = 0;
+            volatile I* firings = firingsV.data;
+            firings[i] = 0;
         }
     }
 
@@ -36,7 +37,7 @@ __device__ void fillBuffers
     
     auto g = rgen.get(id);
     for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
-        I* lgnfiringsRowPtr = lgnfirings.getRowPtr(row);
+        volatile I* lgnfiringsRowPtr = lgnfirings.getRowPtr(row);
         for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
             const F rand = rgen.sampleUniform(i,row,&g);
             lgnfiringsRowPtr[i] = rand < rowPtr[i];
@@ -45,7 +46,7 @@ __device__ void fillBuffers
     
     //Generate poisson noise
     for (int row = blockIdx.x; row < NBSTEPSPERPRES; row += gridDim.x) {
-        I* poissonNoiseRowPtr = poissonNoise.getRowPtr(row);
+        volatile I* poissonNoiseRowPtr = poissonNoise.getRowPtr(row);
         for (int i = tid; i < NBNEUR; i += blockDim.x) {
             const int rand1 = rgen.samplePosPoisson(i,row,&g);
             const int rand2 = rgen.sampleNegPoisson(i,row,&g);
@@ -100,35 +101,40 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
         if (inputRow > numInputRows) {
             inputRow = 0;
         }
-        
         cg::sync(grid);
         fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, b.incomingSpikes, b.firings, rgen, inputRow);
         cg::sync(grid);
 
         F v = ELEAK;
         int isSpiking = 0;
-        for (int numStepsThisPres = 0; numStepsThisPres < 2; numStepsThisPres++) {
+        for (int numStepsThisPres = 0; numStepsThisPres < 350; numStepsThisPres++) {
+            /*
+            if (id == 0) {
+                printf("\nnumpres: %d\n\n", numStepsThisPres);
+            }
+            */
+            cg::sync(grid);
             /* Calculate Inputs with block per Neuron */
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
                 F iff = 0;
                 if (numStepsThisPres < NBSTEPSSTIM) {
                     iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
                 }
-
+                
                 const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, b.incomingSpikes, b.firings, ss.delays, row);
                 
                 if (tid == 0) {
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);
                     const I noise = noiseRowPtr[row];
                     const F input = iff + ilat + noise;
-
+                    //printf("%d : %.15f %.15f %.15f\n", row, iff, ilat, input);
                     volatile F* neuronInputs = b.neuronInputs.data;
                     neuronInputs[row] = input;
                 }
-                __threadfence();
-                cg::sync(block);
             }
-            /* Sync blocks from Input calculation */
+            
+            /* Sync blocks from Input calculation, threadfence for neuronInputs write */
+            __threadfence();
             cg::sync(grid);
 
             /* Neuron per thread stuff */
@@ -141,14 +147,19 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 }
                 xplastFF = xplastFF + lgnfirings / TAUXPLAST - (DT / TAUXPLAST) * xplastFF;
                 ms.xplastFF.data[fid] = xplastFF;
+                if (fid == 326) {
+                    printf("%d : %.15f\n", numStepsThisPres, xplastFF);
+                }
             }
 
             //const int nid = threadIdx.x + blockDim.x * blockIdx.x;
             if (id < NBNEUR) {
-                const F vprev = v;
-                vlongtrace = vlongtrace + (DT / TAUVLONGTRACE) * (max(0.0,(vprev - THETAVLONGTRACE)) - vlongtrace);
-                vneg = vneg + (DT / TAUVNEG) * (vprev - vneg);
-                vpos = vpos + (DT / TAUVPOS) * (vprev - vpos);
+                {
+                    const F vprev = v;
+                    vlongtrace = vlongtrace + (DT / TAUVLONGTRACE) * (max(0.0,(vprev - THETAVLONGTRACE)) - vlongtrace);
+                    vneg = vneg + (DT / TAUVNEG) * (vprev - vneg);
+                    vpos = vpos + (DT / TAUVPOS) * (vprev - vpos);
+                }
 
                 /* PRE-SPIKE UPDATE */
 
@@ -179,7 +190,8 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                     isSpiking = NBSPIKINGSTEPS;
                 }
                 xplastLat = xplastLat + firing / TAUXPLAST - (DT / TAUXPLAST) * xplastLat;
-                b.firings.data[id] = firing;
+                int* firings = b.firings.data;
+                firings[id] = firing;
                 ms.xplastLat.data[id] = xplastLat;
 
                 /* POST-SPIKE UPDATE */
@@ -240,17 +252,19 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                     }
                 }
             }
+        }
 
+        if (id < NBNEUR) {
             ms.vthresh.data[id] = vthresh;
             ms.vlongtrace.data[id] = vlongtrace;
             ms.vneg.data[id] = vneg;
             ms.vpos.data[id] = vpos;
-
+            
             ms.wadap.data[id] = wadap;
             ms.z.data[id] = z;
-
+            
             ms.xplastLat.data[id] = xplastLat;
-            ms.xplastFF.data[id] = xplastFF;   
+            ms.xplastFF.data[id] = xplastFF;
         }
     }
     unsigned long long endTime = clock64();

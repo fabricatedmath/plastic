@@ -25,22 +25,57 @@ void run() {
     run(ms, ss, b);
 }
 
-void runTesting(int i) {
-    MutableState<double,int> ms = loadMutableState(i);
-    cout << ms.wadap.head(4).transpose() << endl;
+void runTesting(int iter) {
+    int numRuns = 350;
+    MutableState<double,int> ms = loadMutableState(iter);
+    cout << ms.wadap.transpose() << endl;
 
     StaticState<double,int> ss = loadStaticState();
     Buffers<double,int> b = Init<double,int>::initBuffers();
     RandomHistorical<double> r = loadRandomHistorical();
 
-    ms = run(ms, ss, b, r);
-    cout << ms.wadap.head(4).transpose() << endl;
+    auto tup = run(ms, ss, b, r);
 
-    MutableState<double,int> msnext = loadMutableState(i+2);
-    VectorX<double> input = loadInput(i+2);
+    ms = std::get<0>(tup);
+    b = std::get<1>(tup);
 
-    cout << msnext.wadap.head(4).transpose() << endl;
-    cout << input.head(4).transpose() << endl;
+    for (int i = 1; i < numRuns; i++) {
+        printf("%d\n", i);
+        print(i);
+    }
+
+    MutableState<double,int> msnext = loadMutableState(iter+numRuns);
+    cout << std::setprecision(15) << ms.wadap.transpose() << endl;
+    cout << std::setprecision(15) << msnext.wadap.transpose() << endl;
+
+    cout << std::setprecision(15) << ms.xplastLat.transpose() << endl;
+    cout << std::setprecision(15) << msnext.xplastLat.transpose() << endl;
+
+    cout << std::setprecision(15) << ms.xplastFF.head(10).transpose() << endl;
+    cout << std::setprecision(15) << msnext.xplastFF.head(10).transpose() << endl;
+
+    int i;
+    cout << "xplastff err+: " << (ms.xplastFF - msnext.xplastFF).maxCoeff(&i) << " @ " << i << endl;
+    cout << "xplastff err-: " << (ms.xplastFF - msnext.xplastFF).minCoeff(&i) << " @ " << i << endl;
+
+    //cout << b.lgnfirings << endl;
+    for (int i = 1; i < 251; i++) {
+        VectorX<double> lgnfirings = loadLgnfirings(i);
+        VectorX<double> lgnfiringsRow = b.lgnfirings.row(i-1).cast<double>();
+        VectorX<double> diff = (lgnfirings - lgnfiringsRow).cwiseAbs();
+        if (diff.maxCoeff() > 0.001) {
+            cout << "lgnfirings don't match" << endl;
+            exit(1);
+        }
+    }
+
+    for (int i = 251; i < 350; i++) {
+        VectorX<double> lgnfirings = loadLgnfirings(i);
+        if (lgnfirings.maxCoeff() > 0.001) {
+            cout << "lgnfirings aren't zero after 250" << i << endl;
+            exit(1);
+        }
+    }
 }
 
 int main(int argc, char* argv[]) {

@@ -50,8 +50,39 @@ VectorX<double> loadV(int i) {
     return loadVector<double>("data/v" + is);
 }
 
+VectorX<double> loadIff(int i) {
+    const string is = "-" + to_string(i);
+
+    return loadVector<double>("data/iff" + is);
+}
+
+VectorX<double> loadIlat(int i) {
+    const string is = "-" + to_string(i);
+
+    return loadVector<double>("data/ilat" + is);
+}
+
 VectorX<double> loadInput(int i) {
     const string is = "-" + to_string(i);
 
     return loadVector<double>("data/i" + is);
+}
+
+MatrixRX<double> loadLgnfirings(int i) {
+    const string is = "-" + to_string(i);
+
+    return loadMatrix<double>("data/lgnfirings" + is);
+}
+
+void print(int iter) {
+    VectorX<double> iffV = loadIff(iter);
+    VectorX<double> ilatV = loadIlat(iter);
+    VectorX<double> inputV = loadInput(iter);
+
+    for (int i = 0; i < NBNEUR; i++) {
+        double iff = iffV(i);
+        double ilat = ilatV(i);
+        double input = inputV(i);
+        printf("%d : %.15f %.15f %.15f\n", i, iff, ilat, input);
+    }
 }
