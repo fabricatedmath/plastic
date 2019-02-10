@@ -26,38 +26,22 @@ void run() {
 }
 
 void runTesting(int iter) {
-    int numRuns = NBSTEPSPERPRES;
+    int numRuns = NBSTEPSPERPRESRUN;
     MutableState<double,int> ms = loadMutableState(iter);
-    cout << "here" << endl;
     StaticState<double,int> ss = loadStaticState();
-    cout << "here" << endl;
     Buffers<double,int> b = Init<double,int>::initBuffers();
-    cout << "here" << endl;
     RandomHistorical<double> r = loadRandomHistorical();
-
-    cout << "here" << endl;
 
     auto tup = run(ms, ss, b, r);
 
     ms = std::get<0>(tup);
     b = std::get<1>(tup);
 
-    for (int i = 1; i < numRuns; i++) {
-        //printf("%d\n", i);
-        //print(i);
-    }
-
-    cout << "here" << endl;
-
     MutableState<double,int> msnext = loadMutableState(iter+numRuns);
-
 
     cout << std::setprecision(15);
 
     int i;
-
-    cout << ms.wadap.transpose() << endl;
-    cout << msnext.wadap.transpose() << endl;
 
     cout << "wadap err+: " << (ms.wadap - msnext.wadap).maxCoeff(&i) << " @ " << i << endl;
     cout << "wadap err+: " << (ms.wadap - msnext.wadap).minCoeff(&i) << " @ " << i << endl;

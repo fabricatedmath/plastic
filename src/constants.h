@@ -5,6 +5,10 @@
 #define NUMPRESTHISLAUNCH 100
 #endif
 
+#ifndef NUMLOOPS
+#define NUMLOOPS 10
+#endif
+
 //Simulation
 #define WFFINITMIN 0.0
 #define WFFINITMAX 0.1
@@ -35,12 +39,13 @@
 #define DT 1.0
 #define INPUTMULT ((DT / 1000.0) * 150.0 * 2.0)
 
-#ifndef NBSTEPSPERPRES
 #define NBSTEPSPERPRES 350
-#endif
-
 #define TIMEZEROINPUT 100
 #define NBSTEPSSTIM (NBSTEPSPERPRES - TIMEZEROINPUT)
+
+#ifndef NBSTEPSPERPRESRUN
+#define NBSTEPSPERPRESRUN NBSTEPSPERPRES
+#endif
 
 #define VSTIM 1.0
 

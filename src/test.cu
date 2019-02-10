@@ -92,7 +92,7 @@ std::tuple<MutableState<F,I>,Buffers<F,I>> wrapper(MutableState<F,I> mutableStat
     const dim3 dimGrid(numBlocks,1,1);
     const int smemSize = 0;
     
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < NUMLOOPS; i++) {
         auto start = high_resolution_clock::now();
         gpuErrchk( cudaLaunchCooperativeKernel((void*)func,  dimGrid, dimBlock, kernelArgs, smemSize, NULL) );
         gpuErrchk( cudaPeekAtLastError() );

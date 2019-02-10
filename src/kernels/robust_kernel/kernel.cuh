@@ -171,7 +171,7 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
 
         F v = ELEAK;
         int isSpiking = 0;
-        for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRES; numStepsThisPres++) {
+        for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRESRUN; numStepsThisPres++) {
             /*
             if (id == 0) {
                 printf("\nnumpres: %d\n\n", numStepsThisPres);
