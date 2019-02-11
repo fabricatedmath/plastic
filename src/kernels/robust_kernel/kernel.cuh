@@ -20,8 +20,10 @@ __device__ void fillBuffers
     const unsigned int tid = threadIdx.x;
 
     //Clear incoming spikes
+    #pragma unroll
     for (int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
         volatile I* incomingSpikesRowPtr = incomingSpikes.getRowPtr(row);
+        #pragma unroll
         for (int i = tid; i < NBNEUR; i += blockDim.x) {
             incomingSpikesRowPtr[i] = 0;
         }
@@ -39,8 +41,10 @@ __device__ void fillBuffers
     const int id = blockIdx.x * blockDim.x + threadIdx.x;
     
     auto g = rgen.get(id);
+    #pragma unroll
     for (int row = blockIdx.x; row < NBSTEPSSTIM; row += gridDim.x) {
         volatile I* lgnfiringsRowPtr = lgnfirings.getRowPtr(row);
+        #pragma unroll
         for (int i = tid; i < FFRFSIZE; i += blockDim.x) {
             const F rand = rgen.sampleUniform(i,row,&g);
             lgnfiringsRowPtr[i] = rand < rowPtr[i];
@@ -48,8 +52,10 @@ __device__ void fillBuffers
     }
     
     //Generate poisson noise
+    #pragma unroll
     for (int row = blockIdx.x; row < NBSTEPSPERPRES; row += gridDim.x) {
         volatile I* poissonNoiseRowPtr = poissonNoise.getRowPtr(row);
+        #pragma unroll
         for (int i = tid; i < NBNEUR; i += blockDim.x) {
             const int rand1 = rgen.samplePosPoisson(i,row,&g);
             const int rand2 = rgen.sampleNegPoisson(i,row,&g);
@@ -67,49 +73,7 @@ inline __device__ void doPlasticity
      const int numStepsThisPres,
      const int tid,
      const cg::thread_block block
-) {
-    for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
-        const F neurLTP = b.eachNeurLTP.data[row];
-        const F neurLTD = b.eachNeurLTD.data[row];
-        
-        const I* rowLgnFirings = b.lgnfirings.getRowPtr(numStepsThisPres);
-        F* rowWff = ms.wff.getRowPtr(row);
-        
-        for (int i = tid; i < FFRFSIZE; i += block.size()) {
-            const F xplastFF = ms.xplastFF.data[i];
-            I lgnfirings = 0;
-            if (numStepsThisPres < NBSTEPSSTIM) {
-                lgnfirings = rowLgnFirings[i];
-            }
-            F wff = rowWff[i];
-            wff = wff + xplastFF * neurLTP;
-            wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
-            wff = min(MAXW,max(0.0,wff));
-            rowWff[i] = wff;
-        }
-        
-        F* rowW = ms.w.getRowPtr(row);
-        for (int i = tid; i < NBE; i += block.size()) {
-            const F xplastLat = ms.xplastLat.data[i];    
-            const I firing = b.firings.data[i];
-            F w = rowW[i];
-            w = w + xplastLat * neurLTP;
-            w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
-            if (row == i) {
-                w = 0.0;
-            }
-            if (i < NBE) {
-                //Excitory Pruning
-                w = max(0.0,w);
-            } else {
-                // Inhibitory Pruning
-                w = min(0.0,w);
-            }
-            w = min(MAXW,w);
-            rowW[i] = w;
-        }
-    }
-}
+) {}
 
 template <typename F, typename I, class p, typename std::enable_if<std::is_same<p, noplasticity>::value>::type* = nullptr>
 inline __device__ void doPlasticity
@@ -165,19 +129,22 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
         if (inputRow > numInputRows) {
             inputRow = 0;
         }
-        cg::sync(grid);
+        
         fillBuffers(ss.input, b.lgnfirings, b.poissonNoise, b.incomingSpikes, b.firings, rgen, inputRow);
         cg::sync(grid);
-
+        
         F v = ELEAK;
         int isSpiking = 0;
         for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRESRUN; numStepsThisPres++) {
-            cg::sync(grid);
             /* Calculate Inputs with block per Neuron */
+            #pragma unroll
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
-                const F iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
-                const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, b.incomingSpikes, b.firings, ss.delays, row);
+                const F neurLTP = b.eachNeurLTP.data[row];
+                const F neurLTD = b.eachNeurLTD.data[row];
                 
+                const F iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, ms.xplastFF, neurLTP, neurLTD, numStepsThisPres, row);
+                const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, b.incomingSpikes, b.firings, ss.delays, ms.xplastLat, neurLTP, neurLTD, row);
+
                 if (tid == 0) {
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);
                     const I noise = noiseRowPtr[row];
@@ -202,7 +169,6 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
                 xplastFF = xplastFF + lgnfirings / TAUXPLAST - (DT / TAUXPLAST) * xplastFF;
                 ms.xplastFF.data[fid] = xplastFF;
             }
-
 
             if (nid < NBNEUR) {
                 {
@@ -257,55 +223,6 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
             }
 
             cg::sync(grid);
-
-            //doPlasticity<F,I,p>(ms, b, numStepsThisPres, tid, block);
-            
-            const bool doPlasticity = false;
-            if (doPlasticity) {
-                /* PLASTICITY */
-
-                for (int row = blockIdx.x; row < NBE; row += gridDim.x) {
-                    const F neurLTP = b.eachNeurLTP.data[row];
-                    const F neurLTD = b.eachNeurLTD.data[row];
-
-                    const I* rowLgnFirings = b.lgnfirings.getRowPtr(numStepsThisPres);
-                    F* rowWff = ms.wff.getRowPtr(row);
-
-                    for (int i = tid; i < FFRFSIZE; i += block.size()) {
-                        const F xplastFF = ms.xplastFF.data[i];
-                        I lgnfirings = 0;
-                        if (numStepsThisPres < NBSTEPSSTIM) {
-                            lgnfirings = rowLgnFirings[i];
-                        }
-                        F wff = rowWff[i];
-                        wff = wff + xplastFF * neurLTP;
-                        wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
-                        wff = min(MAXW,max(0.0,wff));
-                        rowWff[i] = wff;
-                    }
-
-                    F* rowW = ms.w.getRowPtr(row);
-                    for (int i = tid; i < NBE; i += block.size()) {
-                        const F xplastLat = ms.xplastLat.data[i];    
-                        const I firing = b.firings.data[i];
-                        F w = rowW[i];
-                        w = w + xplastLat * neurLTP;
-                        w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
-                        if (row == i) {
-                            w = 0.0;
-                        }
-                        if (i < NBE) {
-                            //Excitory Pruning
-                            w = max(0.0,w);
-                        } else {
-                            // Inhibitory Pruning
-                            w = min(0.0,w);
-                        }
-                        w = min(MAXW,w);
-                        rowW[i] = w;
-                    }
-                }
-            }
         }
 
         if (nid < NBNEUR) {

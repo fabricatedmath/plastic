@@ -73,26 +73,28 @@ std::tuple<MutableState<F,I>,Buffers<F,I>> wrapper(MutableState<F,I> mutableStat
 
     cout << "Num Blocks Used: " << numBlocks << endl << endl;
 
-    int inputRow = 0;
-    int numInputRows = 110000;
-    int numPresThisLaunch = NUMPRESTHISLAUNCH;
 
-    void *kernelArgs[] = {
-        (void*)&cudaMutableState,
-        (void*)&cudaStaticState,
-        (void*)&cudaBuffers,
-        (void*)&cudaRgen,
-        (void*)&inputRow,
-        (void*)&numInputRows,
-        (void*)&numPresThisLaunch,
-        (void*)&d_time
-    };
 
     const dim3 dimBlock(numThreads,1,1);
     const dim3 dimGrid(numBlocks,1,1);
     const int smemSize = 0;
     
     for (int i = 0; i < NUMLOOPS; i++) {
+            int inputRow = i;
+            int numInputRows = 110000;
+            int numPresThisLaunch = NUMPRESTHISLAUNCH;
+
+            void *kernelArgs[] = {
+                (void*)&cudaMutableState,
+                (void*)&cudaStaticState,
+                (void*)&cudaBuffers,
+                (void*)&cudaRgen,
+                (void*)&inputRow,
+                (void*)&numInputRows,
+                (void*)&numPresThisLaunch,
+                (void*)&d_time
+            };
+    
         auto start = high_resolution_clock::now();
         gpuErrchk( cudaLaunchCooperativeKernel((void*)func,  dimGrid, dimBlock, kernelArgs, smemSize, NULL) );
         gpuErrchk( cudaPeekAtLastError() );

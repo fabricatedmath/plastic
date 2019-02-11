@@ -12,8 +12,11 @@ __device__ F computeIFFNeuron
     const cg::thread_block block,
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
-    CudaMatrixX<F> wff,
+    CudaMatrixX<F> wffM,
     CudaMatrixX<I> lgnFiringsBuffer,
+    CudaVectorX<F> xplastFFV,
+    const F neurLTP,
+    const F neurLTD,
     const int numStepsThisPres,
     const int row
 )
@@ -23,14 +26,34 @@ __device__ F computeIFFNeuron
     if (numStepsThisPres >= NBSTEPSSTIM) {
         return acc;
     }
-    const I* rowLgnFirings = lgnFiringsBuffer.getRowPtr(numStepsThisPres);
-    const F* rowWff = wff.getRowPtr(row);
+
+    const I numStepsThisPresPrev = numStepsThisPres - 1;
     
+    const I* rowLgnFirings = lgnFiringsBuffer.getRowPtr(numStepsThisPres);
+    const I* rowLgnFiringsPrev = lgnFiringsBuffer.getRowPtr(numStepsThisPresPrev);
+    
+    F* rowWff = wffM.getRowPtr(row);
+
     #pragma unroll
     for (int i = tid; i < FFRFSIZE; i += block.size()) {
-        const I a = rowLgnFirings[i];
-        const F m = rowWff[i];
-        acc += a*m;
+        F wff = rowWff[i];
+        
+        /* WFF-PLASTICITY */
+        if (numStepsThisPresPrev >= 0) {
+            const F xplastFF = xplastFFV.data[i];
+            I lgnfirings = 0;
+            if (numStepsThisPresPrev < NBSTEPSSTIM) {
+                lgnfirings = rowLgnFiringsPrev[i];
+            }
+            wff = wff + xplastFF * neurLTP;
+            wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
+            wff = min(MAXW,max(0.0,wff));
+            rowWff[i] = wff;
+        }
+        /* END WFF-PLASTICITY */
+        
+        const I lgnfirings = rowLgnFirings[i];
+        acc += lgnfirings*wff;
     }
 
     cg::sync(block);
@@ -61,35 +84,53 @@ __device__ F computeILATNeuron
     const cg::thread_block block,
     const cg::thread_block_tile<32> tile32,
     const unsigned int tid,
-    CudaMatrixX<F> w,
+    CudaMatrixX<F> wM,
     CudaMatrixX<I> incomingSpikes,
     CudaVectorX<I> firingsV,
     CudaMatrixX<I> delays,
+    CudaVectorX<F> xplastLatV,
+    const F neurLTP,
+    const F neurLTD,
     const int row
 )
 {   
     I* incomingSpikesRow = incomingSpikes.getRowPtr(row);
     const I* delaysRow = delays.getRowPtr(row);
-    const F* wRow = w.getRowPtr(row);
+    F* rowW = wM.getRowPtr(row);
 
     F acc = 0;
 
     #pragma unroll
     for (int i = tid; i < NBNEUR; i += block.size()) {
         I incomingSpike = incomingSpikesRow[i];
+        const I firing = firingsV.data[i];
         
         if (i != row) {
             const I delay = delaysRow[i];
-            const I* firings = firingsV.data;
-            const I firing = firings[i];
             incomingSpike = incomingSpike | (firing << (delay-1));
         }
 
         incomingSpikesRow[i] = incomingSpike >> 1;
 
+        /* W-PLASTICITY */
+        F w = rowW[i];
+        const F xplastLat = xplastLatV.data[i];
+        w = w + xplastLat * neurLTP;
+        w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
+        if (row == i) {
+            w = 0.0;
+        }
+        if (i < NBE) {
+            w = max(0.0,w);
+        } else {
+            w = min(0.0,w);
+        }
+        w = min(MAXW,w);
+        rowW[i] = w;
+        /* END  W-PLASTICITY */
+        
         if (1 & incomingSpike == 1) {
-            const F wVal = wRow[i];
-            acc += wVal;
+            acc += w;
         }
     }
 
