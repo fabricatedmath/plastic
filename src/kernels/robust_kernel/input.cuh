@@ -20,6 +20,9 @@ __device__ F computeIFFNeuron
 {
     F acc = 0;
 
+    if (numStepsThisPres >= NBSTEPSSTIM) {
+        return acc;
+    }
     const I* rowLgnFirings = lgnFiringsBuffer.getRowPtr(numStepsThisPres);
     const F* rowWff = wff.getRowPtr(row);
     

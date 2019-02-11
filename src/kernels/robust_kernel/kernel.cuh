@@ -172,26 +172,16 @@ __global__ void test_kernel(CudaMutableState<F,I> ms,
         F v = ELEAK;
         int isSpiking = 0;
         for (int numStepsThisPres = 0; numStepsThisPres < NBSTEPSPERPRESRUN; numStepsThisPres++) {
-            /*
-            if (id == 0) {
-                printf("\nnumpres: %d\n\n", numStepsThisPres);
-            }
-            */
             cg::sync(grid);
             /* Calculate Inputs with block per Neuron */
             for(int row = blockIdx.x; row < NBNEUR; row += gridDim.x) {
-                F iff = 0;
-                if (numStepsThisPres < NBSTEPSSTIM) {
-                    iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
-                }
-                
+                const F iff = VSTIM * computeIFFNeuron<F,I,numThreads>(block, tile32, tid, ms.wff, b.lgnfirings, numStepsThisPres, row);
                 const F ilat = LATCONNMULT * VSTIM * computeILATNeuron<F,I,numThreads>(block, tile32, tid, ms.w, b.incomingSpikes, b.firings, ss.delays, row);
                 
                 if (tid == 0) {
                     const I* noiseRowPtr = b.poissonNoise.getRowPtr(numStepsThisPres);
                     const I noise = noiseRowPtr[row];
                     const F input = iff + ilat + noise;
-                    //printf("%d : %.15f %.15f %.15f\n", row, iff, ilat, input);
                     volatile F* neuronInputs = b.neuronInputs.data;
                     neuronInputs[row] = input;
                 }

@@ -8,8 +8,8 @@ NVCC := nvcc
 INCLUDES = -Ieigen-git-mirror/ -Iinclude/
 NVCCINCLUDES = -Ieigen-git-mirror/ -Iinclude/
 
-#DEFINES =
-DEFINES = -DNBE=2 -DNBI=1 -DNBSTEPSPERPRESRUN=350 -DNUMPRESTHISLAUNCH=1 -DNUMLOOPS=1
+DEFINES =
+#DEFINES = -DNBE=2 -DNBI=1 -DNBSTEPSPERPRESRUN=350 -DNUMPRESTHISLAUNCH=1 -DNUMLOOPS=1
 
 NVCCFLAGS = -lineinfo -rdc=true -Xptxas -v --expt-relaxed-constexpr
 
