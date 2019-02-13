@@ -5,8 +5,8 @@ CC := gcc
 LINK := g++ -dc -fPIC
 NVCC := nvcc
 
-INCLUDES = -Ieigen-git-mirror/ -Iinclude/
-NVCCINCLUDES = -Ieigen-git-mirror/ -Iinclude/
+INCLUDES = -Ieigen-git-mirror/ -Ieigen-cuda-utility/include/
+NVCCINCLUDES = -Ieigen-git-mirror/ -Ieigen-cuda-utility/include/
 
 DEFINES =
 #DEFINES = -DNBE=2 -DNBI=1 -DNBSTEPSPERPRESRUN=350 -DNUMPRESTHISLAUNCH=1 -DNUMLOOPS=1
