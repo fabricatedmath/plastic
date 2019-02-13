@@ -17,8 +17,8 @@ ALL_CCFLAGS += -dc #-Xptxas -dlcm=cg
 
 CXXFLAGS += -std=c++17 $(INCLUDES)
 LIB_CUDA := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart -lcurand -lboost_serialization -lcudadevrt -lboost_program_options
-#GENCODE_FLAGS := -gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75
-GENCODE_FLAGS := -gencode arch=compute_75,code=sm_75
+GENCODE_FLAGS := -gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75
+#GENCODE_FLAGS := -gencode arch=compute_75,code=sm_75
 
 OBJDIR = obj
 BINDIR = bin
@@ -31,7 +31,8 @@ DEPS = $(OBJECTS:%.o=%.d)
 
 CUDA_SOURCES := $(wildcard **/*.cu)
 CUDA_OBJECTS := $(patsubst %.cu,$(OBJDIR)/%.cu.o,$(CUDA_SOURCES))
-CUDA_LINK_OBJECTS := $(patsubst %.cu,$(OBJDIR)/%_link.cu.o,$(CUDA_SOURCES))
+#CUDA_LINK_OBJECTS := $(patsubst %.cu,$(OBJDIR)/%_link.cu.o,$(CUDA_SOURCES))
+CUDA_LINK_OBJECTS := $(OBJDIR)/src/cuda_link.cu.o
 CUDA_DEPS = $(CUDA_OBJECTS:%.cu.o=%.cu.d)
 
 all: build
@@ -58,10 +59,10 @@ $(OBJECTS): $(OBJDIR)/%.o : %.cpp $(OBJDIR)/%.d Makefile
 $(CUDA_OBJECTS): $(OBJDIR)/%.cu.o : %.cu $(OBJDIR)/%.cu.d Makefile
 	@mkdir -p $(dir $@)
 	$(NVCC) $(NVCCFLAGS) $(DEFINES) $(NVCCINCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -c $< -o $@
-	$(NVCC) $(GENCODE_FLAGS) -dlink -o $(OBJDIR)/$*_link.cu.o $@ -lcudart -lcudadevrt
 
 $(TARGET): $(OBJECTS) $(CUDA_OBJECTS) Makefile
 	@mkdir -p $(dir $@)
+	$(NVCC) $(GENCODE_FLAGS) -dlink -o $(CUDA_LINK_OBJECTS) $(CUDA_OBJECTS) -lcudart -lcudadevrt
 	$(LINK) -o $(TARGET) $(OBJECTS) $(CUDA_OBJECTS) $(CUDA_LINK_OBJECTS) $(LIB_CUDA)
 
 .PHONY : clean

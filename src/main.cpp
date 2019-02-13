@@ -4,6 +4,7 @@
 #include "eigen_boost_serialization.hpp"
 #include "state.h"
 #include "test.h"
+#include "multi_test.h"
 #include "init.h"
 #include "loader.h"
 #include "dataset.h"
@@ -92,6 +93,7 @@ int main(int argc, char* argv[]) {
     po::options_description desc("Usage");
     desc.add_options()
         ("help", "produce help message")
+        ("multi", "run the simple multi-gpu test")
         ("double,D", "Use Doubles (default Floats)")
         ("testing,T", "Run in testing mode")
         ;
@@ -101,6 +103,11 @@ int main(int argc, char* argv[]) {
     if (opts.count("help")) {
         cout << desc << "\n";
         return 1;
+    }
+
+    if (opts.count("multi")) {
+        call();
+        return 0;
     }
 
     if(opts.count("testing")) {
