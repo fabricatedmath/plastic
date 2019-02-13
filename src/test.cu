@@ -73,8 +73,6 @@ std::tuple<MutableState<F,I>,Buffers<F,I>> wrapper(MutableState<F,I> mutableStat
 
     cout << "Num Blocks Used: " << numBlocks << endl << endl;
 
-
-
     const dim3 dimBlock(numThreads,1,1);
     const dim3 dimGrid(numBlocks,1,1);
     const int smemSize = 0;
