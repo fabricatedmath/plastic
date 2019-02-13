@@ -23,10 +23,6 @@ __device__ F computeIFFNeuron
 {
     F acc = 0;
 
-    if (numStepsThisPres >= NBSTEPSSTIM) {
-        return acc;
-    }
-
     const I numStepsThisPresPrev = numStepsThisPres - 1;
     
     const I* rowLgnFirings = lgnFiringsBuffer.getRowPtr(numStepsThisPres);
@@ -41,19 +37,24 @@ __device__ F computeIFFNeuron
         /* WFF-PLASTICITY */
         if (numStepsThisPresPrev >= 0) {
             const F xplastFF = xplastFFV.data[i];
-            I lgnfirings = 0;
-            if (numStepsThisPresPrev < NBSTEPSSTIM) {
-                lgnfirings = rowLgnFiringsPrev[i];
-            }
             wff = wff + xplastFF * neurLTP;
-            wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
+            if (numStepsThisPresPrev < NBSTEPSSTIM) {
+                const I lgnfirings = rowLgnFiringsPrev[i];
+                wff = wff + lgnfirings * neurLTD * (1.0 + wff * WPENSCALE);
+            }
             wff = min(MAXW,max(0.0,wff));
             rowWff[i] = wff;
         }
         /* END WFF-PLASTICITY */
         
-        const I lgnfirings = rowLgnFirings[i];
-        acc += lgnfirings*wff;
+        if (numStepsThisPres < NBSTEPSSTIM) {
+            const I lgnfirings = rowLgnFirings[i];
+            acc += lgnfirings*wff;
+        }
+    }
+
+    if (numStepsThisPres >= NBSTEPSSTIM) {
+        return 0;
     }
 
     cg::sync(block);
@@ -102,18 +103,10 @@ __device__ F computeILATNeuron
 
     #pragma unroll
     for (int i = tid; i < NBNEUR; i += block.size()) {
-        I incomingSpike = incomingSpikesRow[i];
         const I firing = firingsV.data[i];
-        
-        if (i != row) {
-            const I delay = delaysRow[i];
-            incomingSpike = incomingSpike | (firing << (delay-1));
-        }
-
-        incomingSpikesRow[i] = incomingSpike >> 1;
+        F w = rowW[i];
 
         /* W-PLASTICITY */
-        F w = rowW[i];
         const F xplastLat = xplastLatV.data[i];
         w = w + xplastLat * neurLTP;
         w = w + firing * neurLTD * (1.0 + w * WPENSCALE);
@@ -127,11 +120,19 @@ __device__ F computeILATNeuron
         }
         w = min(MAXW,w);
         rowW[i] = w;
-        /* END  W-PLASTICITY */
-        
+        /* END W-PLASTICITY */
+
+        I incomingSpike = incomingSpikesRow[i];
+        if (i != row) {
+            const I delay = delaysRow[i];
+            incomingSpike = incomingSpike | (firing << (delay-1));
+        }
+
         if (1 & incomingSpike == 1) {
             acc += w;
         }
+        
+        incomingSpikesRow[i] = incomingSpike >> 1;
     }
 
     cg::sync(block);
