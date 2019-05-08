@@ -1,8 +1,13 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 project(Plastic LANGUAGES CXX CUDA)
+
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --ptxas-options=-v -rdc=true --expt-relaxed-constexpr -gencode arch=compute_75,code=sm_75")
+
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --ptxas-options=-v")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -rdc=true")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_75,code=sm_75")
 
 include_directories(${Plastic_SOURCE_DIR}/eigen-cuda-utility/include)
 
